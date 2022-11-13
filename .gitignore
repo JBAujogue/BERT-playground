@@ -134,8 +134,9 @@ dmypy.json
 datasets/*
 notebooks/runs
 notebooks/misc
-saves/*
+saves/MLM/*
+saves/NER/*
 
 !*.ipynb
-!**.gitkeep
+!*.gitkeep
 
