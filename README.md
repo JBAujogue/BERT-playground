@@ -13,3 +13,4 @@
 | **Token Embedding** |
 | Token Embedding - Benchmark - Word2Vec, FastText, Doc2Vec | Presentation of context-free, SGD-based token embedding methods |
 | Token Embedding - Benchmark - Matrix Factorization methods | Presentation of context-free, Matrix factorization token embedding methods |
+| Token Embedding - Clinical Trials ICTRP | Fitting of W2V embedding table on a corpus of I/E criteria |
