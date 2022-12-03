@@ -3,7 +3,7 @@
 
 ## Table of Content
 
-| Notebook | Description |
+| <div style="width:290px">Notebook </div>| Description |
 |-----|-----|
 | Datasets - Benchmark | Practical description of Datasets & Dataloaders for memory efficiency |
 | Tokenization - Benchmark - Pretrained tokenizers | Presentation of different tokenization approaches, along with example tokenizers provided by well-renouned pretrained models |
