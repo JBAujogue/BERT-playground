@@ -1,7 +1,7 @@
 # Transformers for NLP
 
 #### Disclaimer
-This work is an attempt to explore the landscape provided by the :huggingface: Transformers library.<br>
+This work is an attempt to explore the landscape provided by the 🤗 Transformers library.<br>
 It puts the accent on completeness and explainability, and doesn't cover the following aspects:
   - No experiment tracking, eg using mlflow or WandB
   - Unverified compatibility with Google Colab
