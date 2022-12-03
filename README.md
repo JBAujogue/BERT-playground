@@ -1,7 +1,7 @@
 # Transformers for NLP
 
-### Disclaimer
-This work is an attempt to explore the landscape provided by the :hugging: Transformers library.<br>
+#### Disclaimer
+This work is an attempt to explore the landscape provided by the :huggingface: Transformers library.<br>
 It puts the accent on completeness and explainability, and doesn't cover the following aspects:
   - No experiment tracking, eg using mlflow or WandB
   - Unverified compatibility with Google Colab
@@ -10,7 +10,7 @@ It puts the accent on completeness and explainability, and doesn't cover the fol
   - Incomplete exploration of compute optimization, eg fp16, apex
   
 
-### Notebooks
+## Notebooks
 - :black_square_button: = TODO
 - :white_check_mark: = Functional
 - :sparkles: = Documented
