@@ -1,4 +1,4 @@
-# Transformers for NLP
+# :hugs: Transformers for NLP
 
 #### Disclaimer
 This work is an attempt to explore the landscape provided by the :hugs: Transformers library, by putting the accent on completeness and explainability.
