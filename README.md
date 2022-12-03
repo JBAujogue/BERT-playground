@@ -9,7 +9,7 @@
 
 | Task | Notebook | Status | Description |
 |-----|-----|-----|-----|
-| Datasets | Datasets | :black_square_button: |Practical description of Datasets & Dataloaders for memory efficiency |
+| Misc | Datasets | :black_square_button: |Practical description of Datasets & Dataloaders for memory efficiency |
 | Tokenization | Tokenization - Benchmark - Pretrained tokenizers | :black_square_button: | Presentation of different tokenization approaches, along with example tokenizers provided by well-renouned pretrained models |
 | | Tokenization - Unigram tokenizer - Clinical Trials ICTRP | :white_check_mark: | Fully documented construction and fitting of a Unigram tokenizer |
 | Token Embedding | Token Embedding - Benchmark - SGD based methods | :white_check_mark: | Presentation of context-free, SGD-based token embedding methods |
