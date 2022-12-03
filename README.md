@@ -1,35 +1,19 @@
-# DL4NLP 2.0
-A collection of scripts and notebooks for training and finetuning DL models applied to NLP tasks
+# Transformers for NLP
 
 
-| Task | Project name |
-|-----|-----|
-| PDF parsing | Amazon Textract |
-| Docx parsing | python-docx |
-| Word Embedding | Gensim |
-| Sequence Embedding | |
-| Sequence Embedding - Classification | Huggingface |
-| Sequence Embedding - Similarity |  |
-| Sequence Labelling - [Masked] Language Modeling | Huggingface |
-| Sequence Labelling - Named Entity Recognition | Huggingface, Spacy |
-| Relation Extraction | AllenNLP, Spacy |
-| Coreference Resolution | AllenNLP, Huggingface |
-| Sequence to Sequence - Translation/Single-input Generative Summarization | FairSeq, Haystack, Huggingface |
-| Sequence to Sequence - Question Answering/Multi-input Generative Summarization | AllenNLP, Haystack, Huggingface |
-| Sequence to Graph | OntoText |
+## Notebooks
 
+- :black_square_button: = TODO
+- :white_check_mark: = Functional
+- :sparkles: = Documented
 
-## Annotation tools
-
-see https://bohemian.ai/blog/text-annotation-tools-which-one-pick-2020/
-see https://lionbridge.ai/articles/10-best-text-annotation-services-and-tools/
-
-- free: Doccano/Brat (outdated)/DataTurks/Label Studio/
-- not free: Prodigy/TagTog/LabelBox/plus many more
-- for graphs: protégé (free)/Metaphacts/
-
-
-#### To check
-
-blazegraph, anzo, stardog, graphDB, Marklogic, AllegroGraph, data.world, RDFox, Virtuoso, Amazon neptune
-
+| Notebook | Status | Description |
+|-----|-----|-----|
+| Datasets | :black_square_button: |Practical description of Datasets & Dataloaders for memory efficiency |
+| Tokenization - Benchmark - Pretrained tokenizers | :black_square_button: | Presentation of different tokenization approaches, along with example tokenizers provided by well-renouned pretrained models |
+| Tokenization - Unigram tokenizer - Clinical Trials ICTRP | :white_check_mark: | Fully documented construction and fitting of a Unigram tokenizer |
+| Token Embedding - Benchmark - SGD based methods | :white_check_mark: | Presentation of context-free, SGD-based token embedding methods |
+| Token Embedding - Benchmark - Matrix Factorization methods | :black_square_button: | Presentation of context-free, Matrix factorization token embedding methods |
+| Token Embedding - Clinical Trials ICTRP | :white_check_mark: | Fitting of W2V embedding table on a corpus of I/E criteria |
+| [Token Classification - MLM - Albert Small - Clinical Trials ICTRP](https://github.com/JBAujogue/Transformers-for-NLP/blob/main/notebooks/Token%20Classification%20-%20MLM%20-%20Albert%20Small%20-%20Clinical%20Trials%20ICTRP.ipynb) | :white_check_mark: | Full training of Albert small model on Masked Language Model objective on I/E criteria |
+| Token Classification - NER - Albert - CHIA | :white_check_mark: | Finetuning of Albert model for Named Entity Recognition |
