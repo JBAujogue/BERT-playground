@@ -5,7 +5,7 @@
 
 | Notebook | Description |
 |-----|-----|
-| Dataset | |
+| Dataset |
 | Datasets - Benchmark | Practical description of Datasets & Dataloaders for memory efficiency |
 | Tokenization | |
 | Tokenization - Benchmark - Pretrained tokenizers | Presentation of different tokenization approaches, along with example tokenizers provided by well-renouned pretrained models |
