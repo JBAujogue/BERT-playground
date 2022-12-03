@@ -4,8 +4,8 @@
 ## Notebooks
 
 - :black_square_button: = TODO
-- :white_check_mark: = Satisfying
-- :sparkles: = Finished
+- :white_check_mark: = Functional
+- :sparkles: = Documented
 
 | Notebook | Status | Description |
 |-----|-----|-----|
