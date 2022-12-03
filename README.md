@@ -1,8 +1,5 @@
 # Transformers for NLP
 
-
-## Notebooks
-
 - :black_square_button: = TODO
 - :white_check_mark: = Functional
 - :sparkles: = Documented
