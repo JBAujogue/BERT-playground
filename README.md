@@ -15,4 +15,4 @@
 | Token Embedding - Benchmark - Word2Vec, FastText, Doc2Vec | :white_check_mark: | Presentation of context-free, SGD-based token embedding methods |
 | Token Embedding - Benchmark - Matrix Factorization methods | :black_square_button: | Presentation of context-free, Matrix factorization token embedding methods |
 | Token Embedding - Clinical Trials ICTRP | :white_check_mark: | Fitting of W2V embedding table on a corpus of I/E criteria |
-| Token Classification - MLM - Albert Small - Clinical Trials ICTRP | :white_check_mark: | Full training of Albert small model on Masked Language Model objective on I/E criteria |
+| [Token Classification - MLM - Albert Small - Clinical Trials ICTRP](https://github.com/JBAujogue/Transformers-for-NLP/blob/main/notebooks/Token%20Classification%20-%20MLM%20-%20Albert%20Small%20-%20Clinical%20Trials%20ICTRP.ipynb) | :white_check_mark: | Full training of Albert small model on Masked Language Model objective on I/E criteria |
