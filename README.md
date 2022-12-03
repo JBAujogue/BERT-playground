@@ -14,12 +14,18 @@
     </thead>
     <tbody>
         <tr>
-            <td rowspan=4>L1 Name</td>
-            <td rowspan=2>L2 Name A</td>
-            <td>L3 Name A</td>
+            <td rowspan=1>Dataset</td>
+            <td rowspan=1>Datasets - Benchmark</td>
+            <td>Practical description of Datasets & Dataloaders for memory efficiency</td>
         </tr>
         <tr>
-            <td>L3 Name B</td>
+            <td rowspan=2>Tokenization</td>
+            <td rowspan=1>Benchmark - Pretrained tokenizers</td>
+            <td>Presentation of different tokenization approaches, along with example tokenizers provided by well-renouned pretrained models</td>
+        </tr>
+        <tr>
+            <td rowspan=1>Tokenization - Unigram tokenizer</td>
+            <td>Fully documented construction and fitting of a Unigram tokenizer</td>
         </tr>
         <tr>
             <td rowspan=2>L2 Name B</td>
