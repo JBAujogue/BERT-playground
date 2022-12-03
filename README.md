@@ -4,7 +4,7 @@
 ## Table of Content
 
 | Notebook | Description |
-|-----|-----|
+|: ----- :|-----|
 | **Dataset** |
 | Datasets - Benchmark | Practical description of Datasets & Dataloaders for memory efficiency |
 | Tokenization | |
