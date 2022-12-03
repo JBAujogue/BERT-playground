@@ -1,35 +1,15 @@
-# DL4NLP 2.0
-A collection of scripts and notebooks for training and finetuning DL models applied to NLP tasks
+# Transformers for NLP
 
 
-| Task | Project name |
-|-----|-----|
-| PDF parsing | Amazon Textract |
-| Docx parsing | python-docx |
-| Word Embedding | Gensim |
-| Sequence Embedding | |
-| Sequence Embedding - Classification | Huggingface |
-| Sequence Embedding - Similarity |  |
-| Sequence Labelling - [Masked] Language Modeling | Huggingface |
-| Sequence Labelling - Named Entity Recognition | Huggingface, Spacy |
-| Relation Extraction | AllenNLP, Spacy |
-| Coreference Resolution | AllenNLP, Huggingface |
-| Sequence to Sequence - Translation/Single-input Generative Summarization | FairSeq, Haystack, Huggingface |
-| Sequence to Sequence - Question Answering/Multi-input Generative Summarization | AllenNLP, Haystack, Huggingface |
-| Sequence to Graph | OntoText |
+## Table of Content
+
+| Task | Notebook | Description |
+|-----|-----|-----|
+| Dataset | Datasets - Benchmark | Practical description of Datasets & Dataloaders for memory efficiency |
+| Tokenization | Tokenization - Benchmark - Pretrained tokenizers | Presentation of different tokenization approaches, along with example tokenizers provided by well-renouned pretrained models |
+| Tokenization | Tokenization - Unigram tokenizer - Clinical Trials ICTRP | Fully documented construction and fitting of a Unigram tokenizer |
+| Token Embedding | Token Embedding - Benchmark - Word2Vec, FastText, Doc2Vec | Presentation of context-free, SGD-based token embedding methods |
+| Token Embedding | Token Embedding - Benchmark - Matrix Factorization methods | Presentation of context-free, Matrix factorization token embedding methods |
 
 
-## Annotation tools
-
-see https://bohemian.ai/blog/text-annotation-tools-which-one-pick-2020/
-see https://lionbridge.ai/articles/10-best-text-annotation-services-and-tools/
-
-- free: Doccano/Brat (outdated)/DataTurks/Label Studio/
-- not free: Prodigy/TagTog/LabelBox/plus many more
-- for graphs: protégé (free)/Metaphacts/
-
-
-#### To check
-
-blazegraph, anzo, stardog, graphDB, Marklogic, AllegroGraph, data.world, RDFox, Virtuoso, Amazon neptune
 
