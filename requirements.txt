@@ -6,11 +6,13 @@ seqeval==1.2.2
 scikit-learn==1.1.2
 pandas==1.5.0
 unidecode==1.3.6
+networkx==2.8.8
 
 gensim==4.2.0
 spacy==3.4.1
 mittens==0.2
 
 matplotlib==3.6.0
+pyvis==0.2.1
 notebook
 

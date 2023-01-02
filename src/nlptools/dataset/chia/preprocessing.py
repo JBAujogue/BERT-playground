@@ -99,7 +99,6 @@ def solve_overlaping_entities(df_ents):
 
 
 def get_ner_entities(df_texts, df_ents, categories):
-    # df_ents = load_entities_from_zipfile(zip_file)
     df_ents = df_ents[df_ents.Category.isin(categories)].reset_index(drop = True)
     df_ents = flatten_entities(df_texts, df_ents)
     df_ents = solve_overlaping_entities(df_ents)

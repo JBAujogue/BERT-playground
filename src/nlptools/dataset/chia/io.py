@@ -64,9 +64,7 @@ def load_entities_from_zipfile(zip_file):
             ent_list += ents
             
     df_ents = pd.DataFrame(ent_list, columns = [
-        'Id', 'Entity_id', 
-        'Mention', 'Category', 
-        'Start_char', 'End_char', 'Char_spans',
+        'Id', 'Entity_id', 'Mention', 'Category', 'Start_char', 'End_char', 'Char_spans',
     ])
     return df_ents
 
