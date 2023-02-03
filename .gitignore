@@ -132,6 +132,7 @@ dmypy.json
 
 # custom
 datasets/*
+!datasets/chia/chia.zip
 notebooks/runs
 notebooks/misc
 saves/MLM/*
