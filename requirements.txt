@@ -15,4 +15,5 @@ mittens==0.2
 matplotlib==3.6.0
 pyvis==0.2.1
 notebook
+tensorboard
 

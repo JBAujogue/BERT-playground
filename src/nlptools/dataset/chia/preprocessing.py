@@ -22,7 +22,9 @@ def flatten_entities(df_texts, df_ents):
         func = lambda row: id2text[row.Id][row.Start_char: row.End_char],
         axis = 1,
     )
-    df_ents = df_ents[['Id', 'Entity_id', 'Mention', 'Category', 'Start_char', 'End_char']]
+    df_ents = df_ents[[
+        'Id', 'Entity_id', 'Mention', 'Category', 'Start_char', 'End_char',
+    ]]
     df_ents = df_ents.drop_duplicates(ignore_index = True)
 
     # group by unique mention
