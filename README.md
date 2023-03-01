@@ -5,7 +5,7 @@ This work is an attempt to explore the landscape provided by the :hugs: Transfor
 It does **not** cover the following aspects:
   - Experiment tracking, eg using mlflow or WandB
   - Usage of Google Colab
-  - Usage of "large" models, eg > 20M parameters
+  - Usage of "large" models, eg > 110M parameters
   - End-to-end training script
   - Exploration of compute optimization, eg fp16, apex
   
