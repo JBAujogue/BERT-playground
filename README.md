@@ -38,8 +38,8 @@ It does **not** cover the following aspects:
 
 ### 2. Training protocol
 
-**Whole Word Masking**: Variant of Masked Language Model that jointy mask all tokens of a word, used in particular in [PubMedBert](https://arxiv.org/pdf/2007.15779.pdf)
+- **Whole Word Masking**: Variant of Masked Language Model that jointy mask all tokens of a word, used in particular in [PubMedBert](https://arxiv.org/pdf/2007.15779.pdf)
 
-**Incremental token masking ratio**: The idea of increasing the ration of token masking during pretraining, first proposed in [Adversarial training](https://arxiv.org/pdf/2004.08994.pdf) as starting from 5% and augmenting by 5% every 20% of training process, ending with 25% masking.
+- **Incremental token masking ratio**: The idea of increasing the ration of token masking during pretraining, first proposed in [Adversarial training](https://arxiv.org/pdf/2004.08994.pdf) as starting from 5% and augmenting by 5% every 20% of training process, ending with 25% masking.
 
 
