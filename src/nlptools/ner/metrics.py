@@ -42,8 +42,6 @@ def compute_metrics_finegrained(p, metric, label_list):
     results = metric.compute(predictions = true_predictions, references = true_labels)
     
     keys_micro = [k for k, v in results.items() if isinstance(v, dict)]
-    keys_macro = results.keys() - keys_micro
-    
     results_micro = {
         '{} {}'.format(k, m): results[k][m]
         for k in keys_micro
