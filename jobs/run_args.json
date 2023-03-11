@@ -1,0 +1,20 @@
+{
+    "run_name": "best", 
+    "hub_model_name": "microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext", 
+    "base_model_name": "pubmedbert", 
+    "base_model_task": "mlm", 
+    "final_model_name": "pubmedbert-chia", 
+    "final_model_task": "ner",
+    "benchmark_mode": false, 
+    "learning_rate": 2e-05, 
+    "weight_decay": 0.0001, 
+    "num_train_epochs": 4, 
+    "max_steps": 0, 
+    "batch_size": 6, 
+    "evaluation_strategy": "epoch", 
+    "save_strategy": "no", 
+    "logging_steps": 500, 
+    "seed": 42, 
+    "device": "cuda", 
+    "fp16": false
+}
