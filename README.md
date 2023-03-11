@@ -6,7 +6,6 @@ It does **not** cover the following aspects:
   - Experiment tracking, eg using mlflow or WandB
   - Usage of Google Colab
   - Usage of "large" models, eg > 110M parameters
-  - End-to-end training script
   - Exploration of compute optimization, eg fp16, apex
   
   
