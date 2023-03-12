@@ -132,8 +132,15 @@ dmypy.json
 
 # custom
 datasets/*
-!datasets/chia/
-datasets/chia/chia-ner
+!datasets/chia
+!datasets/lct
+
+datasets/chia/*
+!datasets/chia/chia.zip
+
+datasets/lct/*
+!datasets/lct/lct_corpus.tar.gz
+
 notebooks/misc
 saves/MLM/*
 saves/NER/*
