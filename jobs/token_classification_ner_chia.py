@@ -154,6 +154,15 @@ def main():
             run_args = json.load(f)
     else:
         raise ValueError("The specified path must be a json file")
+    
+    default_args = {
+        "fp16": False,
+        "bf16": False,
+        "tf32": False,
+        "torch_compile": False,
+        "optim": "adamw_hf",
+    }
+    run_args = dict(list(default_args.items()) + list(run_args.items())) 
 
     out_path = os.path.join(
         (path_to_logs if run_args['benchmark_mode'] else path_to_save), 
@@ -183,10 +192,8 @@ def main():
     # set seed for full reproducibility
     set_seed(run_args['seed'])
     
-
     # load raw dataset
     raw_datasets, class_labels = load_chia_dataset(path_to_data)
-
 
     # load model
     base_model_path = os.path.join(path_to_save, run_args['base_model_task'].upper(), run_args['base_model_name'].lower(), 'model')
@@ -200,7 +207,6 @@ def main():
         model.save_pretrained(base_model_path)
         model = AutoModelForTokenClassification.from_pretrained(base_model_path, label2id = label2id, id2label = id2label)
         logger.warning('Model downloaded from Huggingface model hub.')
-    
     
     # load tokenizer
     tokenizer_path = os.path.join(path_to_save, run_args['base_model_task'].upper(), run_args['base_model_name'].lower(), 'tokenizer')
@@ -220,10 +226,8 @@ def main():
             " this requirement"
         )
     
-    
     # preprocess dataset
     tokenized_datasets = tokenize_chia_dataset(raw_datasets, tokenizer, class_labels)
-    
     
     # run training
     model = model.to(run_args['device'])
@@ -241,8 +245,10 @@ def main():
             max_steps = run_args['max_steps'],
             per_device_train_batch_size = run_args['batch_size'],
             per_device_eval_batch_size = run_args['batch_size'],
+            bf16 = run_args['bf16'],
             fp16 = run_args['fp16'],
-
+            torch_compile = run_args['torch_compile'],
+            optim = run_args['optim'],
             # logging args
             output_dir = os.path.join(path_to_save, run_args['final_model_task'], '_checkpoints'),
             logging_dir = out_path,
@@ -263,8 +269,10 @@ def main():
             max_steps = run_args['max_steps'],
             per_device_train_batch_size = run_args['batch_size'],
             per_device_eval_batch_size = run_args['batch_size'],
+            bf16 = run_args['bf16'],
             fp16 = run_args['fp16'],
-
+            torch_compile = run_args['torch_compile'],
+            optim = run_args['optim'],
             # logging args
             output_dir = os.path.join(path_to_save, run_args['final_model_task'], '_checkpoints'),
             evaluation_strategy = 'no',
@@ -282,7 +290,6 @@ def main():
         compute_metrics = lambda p: compute_metrics_finegrained(p, metric, class_labels.names),
     )
     trainer.train()
-    
     
     # export final logs or model
     if run_args['benchmark_mode']:
