@@ -1,0 +1,298 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC
+# MAGIC <div style="
+# MAGIC       font-weight: normal; 
+# MAGIC       font-size: 30px; 
+# MAGIC       text-align: center; 
+# MAGIC       padding: 15px; 
+# MAGIC       margin: 10px;">
+# MAGIC      Chia - NER dataset v4
+# MAGIC   </div> 
+# MAGIC
+# MAGIC
+# MAGIC   <div style="
+# MAGIC       font-size: 15px; 
+# MAGIC       line-height: 12px; 
+# MAGIC       text-align: center; 
+# MAGIC       padding: 15px; 
+# MAGIC       margin: 10px;">
+# MAGIC   Jean-baptiste AUJOGUE
+# MAGIC   </div> 
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC <a id="TOC"></a>
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Useful links
+# MAGIC
+# MAGIC - [CHIA a large annotated corpus of clinical trial eligibility criteria](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7452886/pdf/41597_2020_Article_620.pdf) (paper)
+# MAGIC - https://github.com/uf-hobi-informatics-lab/ClinicalTransformerNER/blob/master/tutorial/brat2bio.ipynb
+# MAGIC - https://github.com/ctgatecci/Clinical-trial-eligibility-criteria-NER/blob/main/NER%20Preprocessing%20and%20Performance%20Analysis.ipynb
+
+# COMMAND ----------
+
+# MAGIC %load_ext autoreload
+# MAGIC %autoreload 2
+
+# COMMAND ----------
+
+import os
+import sys
+import re
+import copy
+import json
+import zipfile
+
+# data
+import pandas as pd
+
+# text
+from spacy.lang.en import English
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Custom variables
+
+# COMMAND ----------
+
+path_to_repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd()))))
+path_to_data = os.path.join(path_to_repo, 'development', 'Datasets', 'CHIA', 'data')
+path_to_src  = os.path.join(path_to_repo, 'src')
+path_to_src
+
+# COMMAND ----------
+
+base_dataset_name  = 'chia_without_scope.zip'
+final_dataset_name = 'chia-ner-v4.tsv'
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Custom imports
+
+# COMMAND ----------
+
+sys.path.insert(0, path_to_src)
+
+# COMMAND ----------
+
+from patient_pkg.dataset.chia.io import load_texts_from_zipfile, load_entities_from_zipfile, load_relations_from_zipfile
+from patient_pkg.dataset.chia.preprocessing import get_ner_entities, convert_to_bio
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # 1. Chia Texts
+# MAGIC
+# MAGIC [Table of content](#TOC)
+
+# COMMAND ----------
+
+df_texts = load_texts_from_zipfile(os.path.join(path_to_data, base_dataset_name))
+
+# COMMAND ----------
+
+df_texts.head()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # 2. Dataframe of entities
+# MAGIC
+# MAGIC [Table of content](#TOC)
+
+# COMMAND ----------
+
+categories = [
+    # domain
+    'Condition',                     # - in C2Q
+    'Device',                        # present in OMOP CDM, can be precise ('Pacemaker') or broad ('barrier method of birth control)
+    'Drug',                          # - in C2Q
+    'Measurement',                   # - in C2Q
+    'Person',                        # Demographic (sex, age), but also contains mislabeled Condition ('Premenopausal', drug users'), mislabeled Measurement ('body mass index') and irrelevant terms ('Incarcerated')
+    'Procedure',                     # - in C2Q
+    'Visit',                         # codable ?
+    
+    # field
+    'Value',                         # - in C2Q
+    'Temporal',                      # - in C2Q
+    'Qualifier',                     # Originaly a Construct entity. Modifier terms similar to Observation
+    'Observation',                   # - in C2Q # greatly overlaps Qualifier, and the delta seems useless
+    # 'Reference_point',             # reference point in time, absolute ("3 times the agent's half-life") or relative ('initiation of treatment')
+    # 'Mood',                        # useless
+
+    # construct
+    # 'Negation',                      # negation expressed as a NER + RelEx problem to be complete
+    # 'Multiplier',                    # CAUTION here, as it covers Value ('> 500 mg/m^2') and Logical label ('3 or more')
+]
+
+# COMMAND ----------
+
+df_ents = load_entities_from_zipfile(os.path.join(path_to_data, base_dataset_name))
+df_ents.shape
+
+# COMMAND ----------
+
+# df_ents[(df_ents.Id == 'NCT00094861_exc') & (df_ents.Entity_id.isin(['T13', 'T14']))]
+
+# COMMAND ----------
+
+df_ents = get_ner_entities(df_texts, df_ents, categories)
+
+# COMMAND ----------
+
+df_ents
+
+# COMMAND ----------
+
+df_ents[df_ents.Category == 'Observation']
+
+# COMMAND ----------
+
+df_ents[df_ents.Category == 'Visit']
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # 3. Merge Qualifiers
+# MAGIC
+# MAGIC [Table of content](#TOC)
+
+# COMMAND ----------
+
+def complete_relations_with_entity_data(df_rels, df_ents):
+  def retrieve_relation_data(r, df_ents):
+    src_info = df_ents[df_ents.Entity_id.apply(lambda ids: r.Source_id in ids)][['Mention', 'Start_char', 'End_char', 'Category']].values.tolist()
+    tar_info = df_ents[df_ents.Entity_id.apply(lambda ids: r.Target_id in ids)][['Mention', 'Start_char', 'End_char', 'Category']].values.tolist()
+
+    # some source & targt entity may no longer exist in df_ents due to previous filtering
+    if src_info and tar_info:
+      return [r.tolist() + s + t for s in src_info for t in tar_info]
+    return []
+  
+  infos = df_rels.apply(lambda r: retrieve_relation_data(r, df_ents[df_ents.Id == r.Id]), axis = 1).tolist()
+  infos = [rst for rsts in infos for rst in rsts]
+  info_cols = df_rels.columns.tolist() + ['Source_mention', 'Source_start_char', 'Source_end_char', 'Source_category', 'Target_mention', 'Target_start_char', 'Target_end_char', 'Target_category']
+  return pd.DataFrame(infos, columns = info_cols)
+
+
+def compute_separating_space(df_rels, df_texts):
+  def compute_separating_text(r, id2text):
+    return id2text[r.Id][r.Target_end_char: r.Source_start_char]
+
+  id2text = {i: t for i, t in df_texts.values.tolist()}
+  seps = df_rels.apply(lambda r: compute_separating_text(r, id2text), axis = 1)
+
+  return pd.concat((df_rels, seps.rename('Separating_mention')), axis = 1)
+
+# COMMAND ----------
+
+df_rels = load_relations_from_zipfile(os.path.join(path_to_data, base_dataset_name))
+df_rels.shape
+
+# COMMAND ----------
+
+df_rels_infos = complete_relations_with_entity_data(df_rels, df_ents)
+
+# Select the relationships we want to merge, see df_rels_infos.Relation.unique()
+df_rels_infos = df_rels_infos[df_rels_infos.Relation.isin(['Has_qualifier'])]
+
+# only keep qualifiers placed before domain entity
+df_rels_infos = df_rels_infos[df_rels_infos.Target_end_char <= df_rels_infos.Source_start_char]
+
+# add separating text between src and tar entities
+df_rels_infos = compute_separating_space(df_rels_infos, df_texts)
+
+# keep Qualifiers only !
+df_rels_infos = df_rels_infos[df_rels_infos.Target_category == 'Qualifier']
+
+# merge qualifiers with separation text obeying some strict rules
+# after carefully inspecting <= 3 characters long separators,
+# we chose spacings only as allowed separating texts (no letter, no dot, no coma, no linebreack, no parenthesis)
+df_rels_infos = df_rels_infos[df_rels_infos.Separating_mention.isin(['', ' '])]
+
+# merge qualifiers to Conditions only
+df_rels_infos = df_rels_infos[df_rels_infos.Source_category == 'Condition']
+
+# forget about qualifiers containing a 'or', as it mislead ner afterward
+df_rels_infos = df_rels_infos[df_rels_infos.Target_mention.apply(lambda t: ' or ' not in t)]
+df_rels_infos.shape
+
+# COMMAND ----------
+
+# check Id + Source_id duplicates
+# df_rels_infos.shape, df_rels_infos[['Id', 'Source_id']].drop_duplicates().shape
+
+# lol = df_rels_infos.groupby(['Id', 'Source_id']).apply(lambda g: g.shape[0])
+# lol[lol > 1]
+
+# df_rels_infos[(df_rels_infos.Id == 'NCT03260881_inc') & (df_rels_infos.Source_id == 'T25')]
+# df_rels_infos[(df_rels_infos.Id == 'NCT02733159_exc') & (df_rels_infos.Source_id == 'T2')]
+
+# 2 duplicates only, which can be safely removed
+df_rels_infos = df_rels_infos.drop_duplicates(subset = ['Id', 'Source_id'], ignore_index = True)
+df_rels_infos.shape
+
+# COMMAND ----------
+
+df_rels_infos
+
+# COMMAND ----------
+
+def merge_qualifiers(df_ents, df_rels_infos, df_texts):
+  def get_least_start_char_extension(r, df_rels_infos):
+    return min([r.Start_char] + df_rels_infos[(df_rels_infos.Id == r.Id) & (df_rels_infos.Source_id.isin(r.Entity_id))].Target_start_char.tolist())
+  
+  id2text = {k: v for k, v in df_texts.values.tolist()}
+  df_ents = df_ents[df_ents.Category != 'Qualifier'].copy()
+  df_ents['Extended_start_char'] = df_ents.apply(lambda r: get_least_start_char_extension(r, df_rels_infos), axis = 1)
+  df_ents['Extended_mention'] = df_ents.apply(lambda r: id2text[r.Id][r.Extended_start_char: r.End_char], axis = 1)
+  return df_ents.reset_index(drop = True)
+
+# COMMAND ----------
+
+df_ents_ext = merge_qualifiers(df_ents, df_rels_infos, df_texts)
+
+# COMMAND ----------
+
+# extend involved domain entities with their attached qualifier, and update all fields
+df_ents_ext
+
+# COMMAND ----------
+
+df_ents_ext[df_ents_ext.Mention != df_ents_ext.Extended_mention]
+
+# COMMAND ----------
+
+# overwrite previous columns
+df_ents_ext.Start_char = df_ents_ext.Extended_start_char
+df_ents_ext.Mention = df_ents_ext.Extended_mention
+df_ents_ext = df_ents_ext[df_ents.columns.tolist()]
+
+# COMMAND ----------
+
+df_ents_ext[(df_ents_ext.Category == 'Condition') & (df_ents_ext.Mention.apply(lambda t: ' or ' in t))]
+
+# COMMAND ----------
+
+df_ents_ext
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # 3. Entities in BIO format
+# MAGIC
+# MAGIC [Table of content](#TOC)
+
+# COMMAND ----------
+
+df_spans = convert_to_bio(df_texts, df_ents_ext)
+df_spans.shape
+
+# COMMAND ----------
