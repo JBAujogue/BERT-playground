@@ -154,6 +154,18 @@ def convert_to_bio(df_texts, df_ents, tokenizer = None):
 
 
 
+def convert_to_prompts(df_texts, df_ents, bos_term = '', sep_term = '\n\n###\n\n', end_term = '\n\nEND'):
+    df_spans = convert_to_bio(df_texts, df_ents)
+    return df_spans.groupby('Sequence_id').apply(
+        lambda g: {
+            'id': g.Sequence_id.iat[0],
+            'prompt': bos_term + ''.join(g.Mention.tolist()) + sep_term,
+            'completion': '\n\n'.join(['\n'.join((text, label)) for text, label in g[g.Category != 'O'][['Mention', 'Category']].values.tolist()]) + end_term,
+        }
+    ).tolist()
+
+
+
 def switch_B_to_I(idx, mapping_dict):
     return mapping_dict[idx] if idx in mapping_dict else idx
 
