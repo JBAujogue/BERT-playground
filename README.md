@@ -30,6 +30,12 @@ It does **not** cover the following aspects:
 
 
 
+## Reference
+
+- Hugginface full list of [tutorial notebooks](https://github.com/huggingface/transformers/tree/main/notebooks) (see also [here](https://huggingface.co/docs/transformers/main/notebooks#pytorch-examples))
+- Huggingface full list of [training scripts](https://github.com/huggingface/transformers/tree/main/examples/pytorch)
+- Huggingface & Pytorch 2.0 [post](https://www.philschmid.de/getting-started-pytorch-2-0-transformers)
+
 
 
 ## Published practical features of Transformers
