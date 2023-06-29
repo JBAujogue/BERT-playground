@@ -46,7 +46,7 @@ def load_entities_from_zipfile(zip_file):
     ent_list = []
     for ann_file in ann_files:
         with archive.open(ann_file, 'r') as f:
-            lines = [l.decode('utf-8').strip() for l in f.readlines()]
+            lines = [l.decode('utf-8').replace('⁄', '/').strip() for l in f.readlines()]
             ents = [l.split('\t') for l in lines if l.startswith('T')]
             ents = [
                 [ann_file.split('/')[-1][:-4], ent[0], ent[2], ent[1]]
