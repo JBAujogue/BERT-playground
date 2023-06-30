@@ -91,29 +91,28 @@ def load_bio_baseline(path_to_txt, id_offset = 0):
 
 
 
+
+
+#**********************************************************
+#*                      Causal LM                         *
+#**********************************************************
+
 def dicts_to_jsonl(data_list: list, filename: str, compress: bool = True) -> None:
     """
     Method saves list of dicts into jsonl file.
     :param data: (list) list of dicts to be stored,
-    :param filename: (str) path to the output file. If suffix .jsonl is not given then methods appends
-        .jsonl suffix into the file.
-    :param compress: (bool) should file be compressed into a gzip archive?
+    :param filename: (str) path to the output file. either endw with .jsonl or with .jsonl.gz
+    :param compress: (bool) should file be compressed into a gzip archive
     """
-    sjsonl = '.jsonl'
-    sgz = '.gz'
-    # Check filename
-    if not filename.endswith(sjsonl):
-        filename = filename + sjsonl
-
-    # Save data
     if compress:
-        filename = filename + sgz
+        assert filename.endswith('.jsonl.gz'), 'When "compress" is set to True, parameter "filename" must end with ".jsonl.gz"'
         with gzip.open(filename, 'w') as compressed:
             for ddict in data_list:
                 jout = json.dumps(ddict) + '\n'
                 jout = jout.encode('utf-8')
                 compressed.write(jout)
     else:
+        assert filename.endswith('.jsonl'), 'When "compress" is set to False, parameter "filename" must end with ".jsonl"'
         with open(filename, 'w') as out:
             for ddict in data_list:
                 jout = json.dumps(ddict) + '\n'
