@@ -112,11 +112,11 @@ def load_chia_dataset(path_to_data):
 
 
 
-def tokenize_chia_dataset(raw_datasets, tokenizer, class_labels):
+def tokenize_chia_dataset(raw_datasets, tokenizer, class_labels, **kwargs):
     B_I_mapping = {l: 'I'+l[1:] for l in class_labels.names if l.startswith('B-')}
-    
+
     tokenized_datasets = raw_datasets.map(
-        function = lambda examples: tokenize_and_align_categories(tokenizer, examples, B_I_mapping), 
+        function = lambda examples: tokenize_and_align_categories(tokenizer, examples, B_I_mapping, **kwargs), 
         batched  = True,
     )
     tokenized_datasets = tokenized_datasets.map(
@@ -218,7 +218,12 @@ def main():
         )
     
     # preprocess dataset
-    tokenized_datasets = tokenize_chia_dataset(raw_datasets, tokenizer, class_labels)
+    kwargs = {
+        'truncation': True, 
+        'max_length': run_args['model_max_length'], 
+        'is_split_into_words': True,
+    }
+    tokenized_datasets = tokenize_chia_dataset(raw_datasets, tokenizer, class_labels, **kwargs)
     
     # run training
     model = model.to(run_args['device'])
