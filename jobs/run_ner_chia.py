@@ -77,7 +77,7 @@ def load_chia_dataset(path_to_data):
         }
         return data
     
-    df_bio = pd.read_csv(os.path.join(path_to_data, 'chia_bio.tsv'), sep = "\t")
+    df_bio = pd.read_csv(path_to_data, sep = "\t")
     
     class_labels = sorted(list(set(df_bio.Category.unique())))
     class_labels = ClassLabel(names = class_labels)
@@ -184,7 +184,7 @@ def main():
     set_seed(run_args['seed'])
     
     # load raw dataset
-    raw_datasets, class_labels = load_chia_dataset(path_to_data)
+    raw_datasets, class_labels = load_chia_dataset(os.path.join(path_to_data, run_args['dataset_name']))
 
     # load model
     base_model_path = os.path.join(path_to_save, run_args['base_model_task'].upper(), run_args['base_model_name'].lower(), 'model')
