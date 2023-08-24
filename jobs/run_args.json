@@ -1,5 +1,6 @@
 {
     "run_name": "run1", 
+    "dataset_path": "datasets/chia/chia-bio.tsv"
     "hub_model_name": "microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext", 
     "base_model_name": "pubmedbert", 
     "base_model_task": "mlm", 
