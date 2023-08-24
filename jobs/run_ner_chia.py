@@ -9,7 +9,6 @@ import sys
 import json
 import argparse
 
-
 # data
 import pandas as pd
 import numpy as np
@@ -48,19 +47,13 @@ path_to_logs = os.path.join(path_to_repo, 'logs')
 path_to_save = os.path.join(path_to_repo, 'saves')
 path_to_src  = os.path.join(path_to_repo, 'src')
 
-
 # custom imports
 sys.path.insert(0, path_to_src)
 
 from nlptools.ner.preprocessing import tokenize_and_align_categories, create_labels
 from nlptools.ner.metrics import compute_metrics, compute_metrics_finegrained
 
-
-
 logger = logging.getLogger(__name__)
-
-
-
 
 
 
@@ -162,7 +155,6 @@ def main():
         run_args['run_name'],
     )
         
-
     # setup logging
     log_level = datasets.logging.INFO
     logging.basicConfig(
@@ -179,12 +171,11 @@ def main():
     logger.warning(f"device: {run_args['device']}, 16-bits training: {run_args['fp16']}")
     logger.info(f"Training/evaluation parameters {run_args}")
 
-
     # set seed for full reproducibility
     set_seed(run_args['seed'])
     
     # load raw dataset
-    raw_datasets, class_labels = load_chia_dataset(os.path.join(path_to_data, run_args['dataset_name']))
+    raw_datasets, class_labels = load_chia_dataset(run_args['dataset_path'])
 
     # load model
     base_model_path = os.path.join(path_to_save, run_args['base_model_task'].upper(), run_args['base_model_name'].lower(), 'model')
@@ -255,6 +246,7 @@ def main():
         )
         train_dataset = tokenized_datasets['trn']
         eval_dataset  = tokenized_datasets['dev']
+    
     # option 2: train on all data, no evaluation
     else:
         args = TrainingArguments(
