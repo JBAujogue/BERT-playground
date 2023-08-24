@@ -14,7 +14,6 @@ import argparse
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-import datasets
 from datasets import (
     Dataset, 
     DatasetDict,
@@ -41,10 +40,6 @@ from transformers import (
 )
 import evaluate
 
-from transformers.trainer_utils import get_last_checkpoint
-from transformers.utils import check_min_version
-from transformers.utils.versions import require_version
-
 
 # custom paths
 path_to_repo = os.path.dirname(os.getcwd())
@@ -61,10 +56,6 @@ from nlptools.ner.preprocessing import tokenize_and_align_categories, create_lab
 from nlptools.ner.metrics import compute_metrics, compute_metrics_finegrained
 
 
-
-
-check_min_version("4.22.2")
-require_version("datasets>=2.5.2", "To fix: pip install -r requirements.txt")
 
 logger = logging.getLogger(__name__)
 
@@ -289,11 +280,13 @@ def main():
         data_collator = DataCollatorForTokenClassification(tokenizer, pad_to_multiple_of = (8 if run_args['fp16'] else None)),
         compute_metrics = lambda p: compute_metrics_finegrained(p, metric, class_labels.names),
     )
-    trainer.train()
+    train_results = trainer.train()
+    trainer.save_metrics('train', train_results.metrics)
     
     # export final logs or model
     if run_args['benchmark_mode']:
         test_results = trainer.evaluate(eval_dataset = tokenized_datasets['tst'], metric_key_prefix = 'test')
+        trainer.save_metrics('test', test_results)
         for k, v in test_results.items():
             logger.info(str(k) + ' ' + '-'*(30 - len(k)) + ' {:2f}'.format(100*v))
     else:
