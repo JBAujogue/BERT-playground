@@ -6,10 +6,10 @@ def switch_B_to_I(idx, mapping_dict):
 
 
 
-def tokenize_and_align_categories(tokenizer, examples, B_I_mapping):
+def tokenize_and_align_categories(tokenizer, examples, B_I_mapping, **kwargs):
     # tokenize into a BatchEncoding instance
     # TODO: set 'padding' and 'max_length' in accordance with tokenizer and model
-    tokenized_inputs = tokenizer(examples["mentions"], truncation = True, max_length = 512, is_split_into_words = True)
+    tokenized_inputs = tokenizer(examples["mentions"], **kwargs)
 
     # align categories
     all_toks = []
