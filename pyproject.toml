@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Jean-baptiste Aujogue <jb.aujogue@gmail.com>"]
 readme = "README.md"
+packages = [{include = "bertools", from="src"}]
 
 [tool.poetry.dependencies]
 python = "~3.11"
@@ -29,6 +30,9 @@ mittens = "^0.2"
 networkx = "^3.2.1"
 matplotlib = "^3.8.3"
 pyvis = "^0.3.2"
+sentence-transformers = "^2.7.0"
+fire = "^0.6.0"
+omegaconf = "^2.3.0"
 
 
 [[tool.poetry.source]]

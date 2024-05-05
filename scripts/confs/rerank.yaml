@@ -1,0 +1,28 @@
+data_args:
+  train_dataset_path: .\data\dummy-rerank\train.tsv
+  valid_dataset_path: .\data\dummy-rerank\valid.tsv
+  test_dataset_path: .\data\dummy-rerank\test.tsv
+
+model_args:
+    model_name_or_path: sentence-transformers/all-mpnet-base-v2
+    device: cuda
+    cache_folder:
+
+training_args:
+    epochs: 1
+    steps_per_epoch:
+    scheduler: warmupcosine
+    warmup_steps: 10
+    optimizer_params:
+      lr: 2e-5
+    weight_decay: 1e-3
+    batch_size: 4
+    evaluation_steps: 5
+    save_best_model: false
+    max_grad_norm: 1
+    use_amp: false
+    callback: 
+    show_progress_bar: true
+    checkpoint_path: 
+    checkpoint_save_steps: 0
+    checkpoint_save_total_limit: 0

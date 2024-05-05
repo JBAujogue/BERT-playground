@@ -129,22 +129,22 @@ dmypy.json
 .pyre/
 
 
+### Custom ###
+# data
+data/*
 
-# custom
-datasets/*
-!datasets/chia
-!datasets/lct
+!data/chia
+data/chia/*
+!data/chia/chia.zip
 
-datasets/chia/*
-!datasets/chia/chia.zip
+!data/lct
+data/lct/*
+!data/lct/lct_corpus.tar.gz
 
-datasets/lct/*
-!datasets/lct/lct_corpus.tar.gz
-
+# ml experiments
+mlruns/*
+models/*
 notebooks/misc
-saves/MLM/*
-saves/NER/*
 
 !*.ipynb
 !*.gitkeep
-
