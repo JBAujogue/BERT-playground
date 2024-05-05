@@ -144,7 +144,7 @@ data/lct/*
 # ml experiments
 mlruns/*
 models/*
-notebooks/misc
+notebooks/_misc
 
 !*.ipynb
 !*.gitkeep
