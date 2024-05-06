@@ -4,7 +4,7 @@ from omegaconf import OmegaConf
 from fire import Fire
 import logging
 
-from bertools.rerank import RerankDataset, RerankTrainer
+from bertools.tasks.rerank import RerankDataset, RerankTrainer
 
 logger = logging.getLogger(__name__)
 

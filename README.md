@@ -9,6 +9,15 @@ It does **not** cover the following aspects:
   - Experiment tracking, eg using mlflow or WandB
   - Usage of Google Colab
   - Usage of "large" models, eg > 110M parameters
+
+
+
+## CLI tools
+
+#### Run Reranking
+```powershell
+python -m bertools.tasks.run_rerank --config-path .\scripts\confs\rerank-dummy.yaml --logging-dir .\mlruns\rerank\all-mpnet-base-v2-dummy-rerank\run1 --output-dir .\models\rerank\all-mpnet-base-v2-dummy-rerank
+```
   
   
 

@@ -50,8 +50,8 @@ path_to_src  = os.path.join(path_to_repo, 'src')
 # custom imports
 sys.path.insert(0, path_to_src)
 
-from nlptools.ner.preprocessing import tokenize_and_align_categories, create_labels
-from nlptools.ner.metrics import compute_metrics, compute_metrics_finegrained
+from bertools.tasks.ner.preprocessing import tokenize_and_align_categories, create_labels
+from bertools.tasks.ner.metrics import compute_metrics, compute_metrics_finegrained
 
 logger = logging.getLogger(__name__)
 
