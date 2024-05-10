@@ -1,0 +1,30 @@
+data_args:
+    train_dataset_path: .\data\
+    valid_dataset_path: .\data\
+    test_dataset_path: .\data\
+
+# params of AutoModelForMaskedLM.from_pretrained
+model_args:
+    model_name_or_path: albert-base-v2
+    device: cuda
+    cache_folder:
+
+# params of TrainingArguments
+training_args:
+    output_dir: .\models\finetuned\mlm\<model-id>-<dataset-id>
+    evaluation_strategy: no
+    learning_rate: 5e-4
+    num_train_epochs: 1
+    warmup_steps: 1500
+    gradient_accumulation_steps: 1
+    per_device_train_batch_size: 16
+    per_device_eval_batch_size: 16
+    save_strategy: no
+    logging_steps: 100
+    seed: 42
+    data_seed: 23
+
+# params of CustomDataCollatorForLanguageModeling
+collator_args:
+    task_proportions: [2, 2, 2, 4]
+

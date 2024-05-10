@@ -3,13 +3,19 @@ from typing import Optional
 from omegaconf import OmegaConf
 from fire import Fire
 import logging
-
-from bertools.tasks.rerank import RerankDataset, RerankTrainer
+from datasets import load_from_disk
+from transformers import (
+    AutoTokenizer, 
+    AutoModelForMaskedLM, 
+    TrainingArguments, 
+    Trainer,
+)
+from bertools.tasks.mlm import CustomDataCollatorForLanguageModeling
 
 logger = logging.getLogger(__name__)
 
 
-def run_rerank(
+def run_mlm(
     config_path: str,
     logging_dir: str,
     output_dir: Optional[str] = None,
@@ -22,9 +28,7 @@ def run_rerank(
                 - data_args
                 - model_args
                 - training_args
-            Model args and training args are listed in the sentence-transformers 
-            source code, see https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/SentenceTransformer.py
-            Other sections are discarded.
+            
         logging_dir (str):
             path to the folder where finetuning metrics are logged.
         output_dir (Optional[str], default to None):
@@ -43,9 +47,9 @@ def run_rerank(
     job_config = OmegaConf.load(config_path)
     logger.info(
         f'''
-        #-------------------------------------#
-        # Running Reranking training pipeline #
-        #-------------------------------------#
+        #----------------------------------------------------#
+        # Running Masked Language Modeling training pipeline #
+        #----------------------------------------------------#
             
         - Using job config at '{config_path}'.
         - Using logging dir '{logging_dir}'.
@@ -58,24 +62,35 @@ def run_rerank(
     valid_path = job_config.data_args.valid_dataset_path
     test_path = job_config.data_args.test_dataset_path
     
-    train_dataset = RerankDataset.from_path(train_path)
-    valid_dataset = RerankDataset.from_path(valid_path) if valid_path else None
-    test_dataset = RerankDataset.from_path(test_path) if test_path else None
+    train_dataset = load_from_disk(train_path)
+    valid_dataset = load_from_disk(valid_path) if valid_path else None
+    test_dataset = load_from_disk(test_path) if test_path else None
+    
+    # load tokenizer & model
+    tokenizer = AutoTokenizer.from_pretrained(job_config.model_args.model_name_or_path)
+    model = AutoModelForMaskedLM.from_pretrained(job_config.model_args.model_name_or_path).train()
+    logger.info(f'Loaded model has {model.num_parameters()} parameters')
     
     # train, evaluate & save model
-    trainer = RerankTrainer(
-        model_args = OmegaConf.to_object(job_config.model_args),
-        logging_dir = logging_dir,
+    training_args = TrainingArguments(OmegaConf.to_object(job_config.training_args))
+    data_collator = CustomDataCollatorForLanguageModeling(
+        tokenizer = tokenizer, 
+        task_proportions = tuple(job_config.collator_args.task_proportions),
+    )
+    trainer = Trainer(
+        model = model,
+        tokenizer = tokenizer,
+        args = training_args,
+        data_collator = data_collator,
         train_dataset = train_dataset,
-        valid_dataset = valid_dataset,
-        training_args = OmegaConf.to_object(job_config.training_args),
+        eval_dataset = valid_dataset,
     )
     trainer.train()
     if test_dataset is not None:
-        trainer.evaluate(test_dataset)
+        trainer.evaluate(test_dataset, metric_key_prefix = 'test')
     trainer.save_model(output_dir)
-    logger.info('Reranking training pipeline complete')
+    logger.info('Masked Language Modeling training pipeline complete')
 
 
 if __name__ == '__main__':
-    Fire(run_rerank)
+    Fire(run_mlm)

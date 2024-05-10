@@ -1,13 +1,15 @@
 data_args:
-  train_dataset_path: .\data\dummy-rerank\train.tsv
-  valid_dataset_path: .\data\dummy-rerank\valid.tsv
-  test_dataset_path: .\data\dummy-rerank\test.tsv
+    train_dataset_path: .\data\dummy-rerank\train.tsv
+    valid_dataset_path: .\data\dummy-rerank\valid.tsv
+    test_dataset_path: .\data\dummy-rerank\test.tsv
 
+# params of SentenceTransformer
 model_args:
     model_name_or_path: sentence-transformers/all-mpnet-base-v2
     device: cuda
     cache_folder:
 
+# params of model.fit
 training_args:
     epochs: 1
     steps_per_epoch:

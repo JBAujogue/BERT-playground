@@ -1,7 +1,7 @@
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, List, NewType, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 from transformers import PreTrainedTokenizerBase
@@ -39,8 +39,6 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
     return_tensors: str = "pt"
 
     def __post_init__(self):
-        import torch
-        
         # Ensures that entries in task_proportions sums to 1
         self.task_proportions = tuple(abs(v) for v in self.task_proportions)
         if sum(self.task_proportions) > 0:
@@ -56,13 +54,19 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
     def numpy_call(self, *args, **kwargs):
         raise NotImplementedError("This data collator is Pytorch-only")
     
-    def torch_call(self, examples: List[Union[List[int], Any, Dict[str, Any]]]) -> Dict[str, Any]:
+    def torch_call(
+        self, examples: List[Union[List[int], Any, Dict[str, Any]]]
+        ) -> Dict[str, Any]:
         # Handle dict or lists with proper padding and conversion to tensor.
         if isinstance(examples[0], Mapping):
-            batch = self.tokenizer.pad(examples, return_tensors="pt", pad_to_multiple_of=self.pad_to_multiple_of)
+            batch = self.tokenizer.pad(
+                examples, return_tensors="pt", pad_to_multiple_of=self.pad_to_multiple_of
+            )
         else:
             batch = {
-                "input_ids": _torch_collate_batch(examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of)
+                "input_ids": _torch_collate_batch(
+                    examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of
+                )
             }
         special_tokens_mask = batch.pop("special_tokens_mask", None)
         batch["input_ids"], batch["labels"] = self.torch_edit_tokens(
@@ -71,7 +75,9 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         )
         return batch
 
-    def torch_edit_tokens(self, inputs: Any, special_tokens_mask: Optional[Any] = None) -> Tuple[Any, Any]:
+    def torch_edit_tokens(
+        self, inputs: Any, special_tokens_mask: Optional[Any] = None
+        ) -> Tuple[Any, Any]:
         """
         Prepare noisy tokens inputs/labels for denoising language modeling: 100% random.
         """
@@ -90,8 +96,8 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         else:
             special_tokens_mask = special_tokens_mask.bool()
             
-        # We split tokens into [mask | random noise | keep to learn | keep to ignore] subgroups
-        # through random sampling according to proportions given in self.task_proportions
+        # We split tokens into [mask | random noise | keep to learn | keep to ignore] 
+        # subgroups through random sampling according to proportions given in self.task_proportions
         distribution_matrix = torch.multinomial(
             self.task_proportions, 
             math.prod(labels.shape), 
