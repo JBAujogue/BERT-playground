@@ -14,9 +14,14 @@ It does **not** cover the following aspects:
 
 ## CLI tools
 
+#### Run Masked Language Modeling
+```powershell
+python -m bertools.tasks.run_mlm --config-path .\configs\mlm.yaml --logging-dir .\mlruns\mlm\albert-small-ctti --save-model false
+```
+
 #### Run Reranking
 ```powershell
-python -m bertools.tasks.run_rerank --config-path .\configs\rerank.yaml --logging-dir .\mlruns\rerank\all-mpnet-base-v2-rerank-dummy\run1 --output-dir .\models\rerank\all-mpnet-base-v2-rerank-dummy
+python -m bertools.tasks.run_rerank --config-path .\configs\rerank.yaml --logging-dir .\mlruns\rerank\all-mpnet-base-v2-rerank-dummy --output-dir .\models\rerank\all-mpnet-base-v2-rerank-dummy
 ```
   
   

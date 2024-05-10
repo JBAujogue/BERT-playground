@@ -1,7 +1,8 @@
 import math
+from itertools import chain
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Iterable
 
 import torch
 from transformers import PreTrainedTokenizerBase
@@ -33,8 +34,7 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
     </Tip>
     '''
     tokenizer: PreTrainedTokenizerBase
-    task_proportions: tuple = (12, 1.5, 1.5, 85)    # mask | random noise | keep to learn | keep to ignore
-    task_loss_weighting_coefs: tuple = (1., 1., 1.) # mask | random noise | keep to learn
+    task_proportions: Iterable = (12, 1.5, 1.5, 85)    # mask | random noise | keep to learn | ignore
     pad_to_multiple_of: Optional[int] = None
     return_tensors: str = "pt"
 
@@ -44,7 +44,6 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         if sum(self.task_proportions) > 0:
             tot = sum(self.task_proportions)
             self.task_proportions = torch.tensor(tuple(v/tot for v in self.task_proportions))
-            print(self.task_proportions)
         else:
             raise ValueError('"task_proportions" sum of entites should be positive"')
 
@@ -55,7 +54,7 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         raise NotImplementedError("This data collator is Pytorch-only")
     
     def torch_call(
-        self, examples: List[Union[List[int], Any, Dict[str, Any]]]
+        self, examples: List[Union[List[int], Any, Dict[str, Any]]], *args, **kwargs
         ) -> Dict[str, Any]:
         # Handle dict or lists with proper padding and conversion to tensor.
         if isinstance(examples[0], Mapping):
@@ -123,3 +122,22 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         # We only compute loss on masked / randomized / learned tokens
         labels[ignr_matrix] = -100 
         return (inputs, labels)
+
+
+def form_constant_length_blocks(examples, block_size):
+    # Concatenate all texts.
+    keys = [k for k in examples.keys() if k != 'text']
+    concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+    total_length = len(concatenated_examples[keys[0]])
+    
+    # We could add padding instead of this drop
+    if total_length >= block_size:
+        total_length = (total_length // block_size) * block_size
+    
+    # Split by chunks of max_len
+    result = {
+        k: [t[i : i+block_size] for i in range(0, total_length, block_size)]
+        for k, t in concatenated_examples.items()
+    }
+    result["labels"] = result["input_ids"].copy()
+    return result

@@ -12,6 +12,37 @@ files = [
 ]
 
 [[package]]
+name = "accelerate"
+version = "0.30.0"
+description = "Accelerate"
+optional = false
+python-versions = ">=3.8.0"
+files = [
+    {file = "accelerate-0.30.0-py3-none-any.whl", hash = "sha256:cd93902dc37a49952b4b8b324c5d53776c936fcd77b4b0162cf5ce55a4fc2721"},
+    {file = "accelerate-0.30.0.tar.gz", hash = "sha256:0f8e103a6ced54cd40af6bb2331ec922e42269d2778038dc564d53047b1386d2"},
+]
+
+[package.dependencies]
+huggingface-hub = "*"
+numpy = ">=1.17"
+packaging = ">=20.0"
+psutil = "*"
+pyyaml = "*"
+safetensors = ">=0.3.1"
+torch = ">=1.10.0"
+
+[package.extras]
+deepspeed = ["deepspeed (<=0.14.0)"]
+dev = ["bitsandbytes", "black (>=23.1,<24.0)", "datasets", "diffusers", "evaluate", "hf-doc-builder (>=0.3.0)", "parameterized", "pytest (>=7.2.0,<=8.0.0)", "pytest-subtests", "pytest-xdist", "rich", "ruff (>=0.2.1,<0.3.0)", "scikit-learn", "scipy", "timm", "torchpippy (>=0.2.0)", "tqdm", "transformers"]
+quality = ["black (>=23.1,<24.0)", "hf-doc-builder (>=0.3.0)", "ruff (>=0.2.1,<0.3.0)"]
+rich = ["rich"]
+sagemaker = ["sagemaker"]
+test-dev = ["bitsandbytes", "datasets", "diffusers", "evaluate", "scikit-learn", "scipy", "timm", "torchpippy (>=0.2.0)", "tqdm", "transformers"]
+test-prod = ["parameterized", "pytest (>=7.2.0,<=8.0.0)", "pytest-subtests", "pytest-xdist"]
+test-trackers = ["comet-ml", "dvclive", "tensorboard", "wandb"]
+testing = ["bitsandbytes", "datasets", "diffusers", "evaluate", "parameterized", "pytest (>=7.2.0,<=8.0.0)", "pytest-subtests", "pytest-xdist", "scikit-learn", "scipy", "timm", "torchpippy (>=0.2.0)", "tqdm", "transformers"]
+
+[[package]]
 name = "aiohttp"
 version = "3.9.5"
 description = "Async http client/server framework (asyncio)"
@@ -5439,4 +5470,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "fae39ae79b4b6d60e3303971a9c51790bedc59ce3f7f168191b40005a950f84c"
+content-hash = "e21ec23eb12d498564e0ba9cf461ff2caf824e20983db4f87c4f6ade05e3142b"

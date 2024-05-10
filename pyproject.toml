@@ -33,6 +33,7 @@ pyvis = "^0.3.2"
 sentence-transformers = "^2.7.0"
 fire = "^0.6.0"
 omegaconf = "^2.3.0"
+accelerate = "^0.30.0"
 
 
 [[tool.poetry.source]]
