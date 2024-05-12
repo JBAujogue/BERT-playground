@@ -13,6 +13,7 @@ def run_rerank(
     config_path: str,
     logging_dir: str,
     output_dir: Optional[str] = None,
+    save_model: bool = True,
     ):
     '''
     Args:
@@ -30,28 +31,21 @@ def run_rerank(
         output_dir (Optional[str], default to None):
             path to the folder where finetuned model is persisted.
             If not specified, model is persisted into '<logging-dir>/model/'.
+        save_model (Optional[bool], default to True):
+            whether saving trained model or not.
     '''
-    # load job config
-    config_path = os.path.abspath(config_path)
-    logging_dir = os.path.abspath(logging_dir)
-    output_dir = (
-        os.path.abspath(output_dir) 
-        if output_dir else 
-        os.path.join(logging_dir, 'model')
-    )
-    
-    job_config = OmegaConf.load(config_path)
     logger.info(
         f'''
         #-------------------------------------#
         # Running Reranking training pipeline #
-        #-------------------------------------#
-            
-        - Using job config at '{config_path}'.
-        - Using logging dir '{logging_dir}'.
-        - Using output dir '{output_dir}'.
-        '''
+        #-------------------------------------#'''
     )
+    config_path = os.path.abspath(config_path)
+    logging_dir = os.path.abspath(logging_dir)
+    
+    # load job config
+    job_config = OmegaConf.load(config_path)
+    logger.info(f'Using job config at {config_path}')
     
     # load train/valid/test datasets
     train_path = job_config.data_args.train_dataset_path
@@ -70,10 +64,19 @@ def run_rerank(
         valid_dataset = valid_dataset,
         training_args = OmegaConf.to_object(job_config.training_args),
     )
+    logger.info(f'Logging experiment artifacts at {logging_dir}')
     trainer.train()
     if test_dataset is not None:
         trainer.evaluate(test_dataset)
-    trainer.save_model(output_dir)
+        
+    if save_model:
+        output_dir = (
+            os.path.abspath(output_dir) 
+            if output_dir else 
+            os.path.join(logging_dir, 'model')
+        )
+        trainer.save_model(output_dir)
+        logger.info(f'Model saved to {output_dir}')
     logger.info('Reranking training pipeline complete')
 
 
