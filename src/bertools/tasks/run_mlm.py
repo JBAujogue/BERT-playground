@@ -39,25 +39,25 @@ def run_mlm(
         save_model (Optional[bool], default to True):
             whether saving trained model or not.
     '''
-    # load job config
-    config_path = os.path.abspath(config_path)
-    logging_dir = os.path.abspath(logging_dir)
-
-    device = ('cuda' if torch.cuda.is_available() else 'cpu')
-    _job_config = OmegaConf.load(config_path)
-    job_config = OmegaConf.to_object(_job_config)
     logger.info(
         f'''
         #----------------------------------------------------#
         # Running Masked Language Modeling training pipeline #
         #----------------------------------------------------#'''
     )
+    config_path = os.path.abspath(config_path)
+    logging_dir = os.path.abspath(logging_dir)
+
+    # load job config
+    _job_config = OmegaConf.load(config_path)
+    job_config = OmegaConf.to_object(_job_config)
     logger.info(f'Using job config at {config_path}')
     
     # load train/valid/test datasets
     dataset = load_dataset(**job_config['dataset_args'])
     
     # load tokenizer & model
+    device = ('cuda' if torch.cuda.is_available() else 'cpu')
     tokenizer = AutoTokenizer.from_pretrained(**job_config['tokenizer_args'])
     model = AutoModelForMaskedLM.from_pretrained(**job_config['model_args']).to(device).train()
     logger.info(f'Loaded model has {model.num_parameters()} parameters')
