@@ -1,16 +1,15 @@
-import math
 from itertools import chain
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union, Iterable
+from typing import Dict, List, Optional, Tuple, Iterable
 
 import torch
 from transformers import PreTrainedTokenizerBase
-from transformers.data.data_collator import DataCollatorMixin, _torch_collate_batch
+from transformers.data.data_collator import DataCollatorMixin
 
 
 @dataclass
-class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
+class DataCollatorForMLM(DataCollatorMixin):
     '''
     Data collator used for language modeling. Inputs are dynamically padded to the maximum length of a batch if they
     are not all of the same length.
@@ -54,19 +53,12 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         raise NotImplementedError("This data collator is Pytorch-only")
     
     def torch_call(
-        self, examples: List[Union[List[int], Any, Dict[str, Any]]], *args, **kwargs
-        ) -> Dict[str, Any]:
+        self, examples: List[Dict[str, torch.Tensor]], *args, **kwargs
+        ) -> Dict[str, torch.Tensor]:
         # Handle dict or lists with proper padding and conversion to tensor.
-        if isinstance(examples[0], Mapping):
-            batch = self.tokenizer.pad(
-                examples, return_tensors="pt", pad_to_multiple_of=self.pad_to_multiple_of
-            )
-        else:
-            batch = {
-                "input_ids": _torch_collate_batch(
-                    examples, self.tokenizer, pad_to_multiple_of=self.pad_to_multiple_of
-                )
-            }
+        batch = self.tokenizer.pad(
+            examples, return_tensors = "pt", pad_to_multiple_of = self.pad_to_multiple_of
+        )
         special_tokens_mask = batch.pop("special_tokens_mask", None)
         batch["input_ids"], batch["labels"] = self.torch_edit_tokens(
             inputs = batch["input_ids"],
@@ -75,8 +67,8 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         return batch
 
     def torch_edit_tokens(
-        self, inputs: Any, special_tokens_mask: Optional[Any] = None
-        ) -> Tuple[Any, Any]:
+        self, inputs: torch.Tensor, special_tokens_mask: torch.Tensor
+        ) -> Tuple[torch.Tensor]:
         """
         Prepare noisy tokens inputs/labels for denoising language modeling: 100% random.
         """
@@ -87,11 +79,11 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         if special_tokens_mask is None:
             special_tokens_mask = [
                 self.tokenizer.get_special_tokens_mask(
-                    val, already_has_special_tokens=True
+                    val, already_has_special_tokens = True
                 ) 
                 for val in labels.tolist()
             ]
-            special_tokens_mask = torch.tensor(special_tokens_mask, dtype=torch.bool)
+            special_tokens_mask = torch.tensor(special_tokens_mask, dtype = torch.bool)
         else:
             special_tokens_mask = special_tokens_mask.bool()
             
@@ -99,7 +91,7 @@ class CustomDataCollatorForLanguageModeling(DataCollatorMixin):
         # subgroups through random sampling according to proportions given in self.task_proportions
         distribution_matrix = torch.multinomial(
             self.task_proportions, 
-            math.prod(labels.shape), 
+            labels.nelement(),
             replacement = True,
         ).reshape(labels.shape)
         distribution_matrix.masked_fill_(special_tokens_mask, value = 3)
@@ -135,9 +127,7 @@ def form_constant_length_blocks(examples, block_size):
         total_length = (total_length // block_size) * block_size
     
     # Split by chunks of max_len
-    result = {
+    return {
         k: [t[i : i+block_size] for i in range(0, total_length, block_size)]
         for k, t in concatenated_examples.items()
     }
-    result["labels"] = result["input_ids"].copy()
-    return result
