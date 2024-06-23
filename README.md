@@ -16,7 +16,7 @@ It does **not** cover the following aspects:
 
 #### Run Masked Language Modeling
 ```powershell
-python -m bertools.tasks.run_mlm --config-path .\configs\mlm.yaml --logging-dir .\mlruns\mlm\albert-base-v2-ctti-dummy --save-model false
+python -m bertools.tasks.mlm --config-path .\configs\mlm.yaml --logging-dir .\mlruns\mlm\albert-base-v2-ctti-dummy --save-model false
 ```
 
 #### Run Reranking

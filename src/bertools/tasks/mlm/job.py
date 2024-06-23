@@ -1,7 +1,6 @@
 import os
 from typing import Optional
 from omegaconf import OmegaConf
-from fire import Fire
 import logging
 from datasets import load_dataset
 import torch
@@ -12,7 +11,7 @@ from transformers import (
     Trainer,
     set_seed,
 )
-from bertools.tasks.mlm import DataCollatorForMLM, form_constant_length_blocks
+from bertools.tasks.mlm.utils import DataCollatorForMLM, form_constant_length_blocks
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +117,3 @@ def run_mlm(
         trainer.save_model(output_dir)
         logger.info(f'Model saved to {output_dir}')
     logger.info('Masked Language Modeling training pipeline complete')
-
-
-if __name__ == '__main__':
-    Fire(run_mlm)
