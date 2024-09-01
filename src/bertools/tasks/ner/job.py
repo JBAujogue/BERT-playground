@@ -1,27 +1,10 @@
-"""
-Fine-tuning the library models for token classification.
-Adapted from https://github.com/huggingface/transformers/blob/main/examples/pytorch/token-classification/run_ner.py
-"""
-
 import logging
 import os
 import sys
 import json
 import argparse
 
-# data
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from datasets import (
-    Dataset, 
-    DatasetDict,
-    ClassLabel, 
-    Features, 
-    Sequence, 
-    Value,
-    load_dataset,
-)
+
 
 # model & training
 import torch
@@ -40,94 +23,130 @@ from transformers import (
 import evaluate
 
 
-# custom paths
-path_to_repo = os.path.dirname(os.getcwd())
-path_to_data = os.path.join(path_to_repo, 'datasets', 'chia', 'chia-ner')
-path_to_logs = os.path.join(path_to_repo, 'logs')
-path_to_save = os.path.join(path_to_repo, 'saves')
-path_to_src  = os.path.join(path_to_repo, 'src')
-
-# custom imports
-sys.path.insert(0, path_to_src)
-
-from bertools.tasks.ner.preprocessing import tokenize_and_align_categories, create_labels
-from bertools.tasks.ner.metrics import compute_metrics, compute_metrics_finegrained
-
-logger = logging.getLogger(__name__)
 
 
+import os
+from omegaconf import OmegaConf
+from pathlib import Path
+from loguru import logger
 
-# ------------------------ functions -----------------------------
-def load_chia_dataset(path_to_data):
-    def get_item_list(df, grp_col, item_col):
-        return df.groupby(grp_col).apply(lambda g: g[item_col].tolist()).tolist()
-
-    def convert_dataframe_to_dataset(df):
-        data = {
-            'ids': df.Sequence_id.unique().tolist(),
-            'mentions': get_item_list(df, 'Sequence_id', 'Mention'),
-            'categories': get_item_list(df, 'Sequence_id', 'Category'),
-        }
-        return data
-    
-    df_bio = pd.read_csv(path_to_data, sep = "\t")
-    
-    class_labels = sorted(list(set(df_bio.Category.unique())))
-    class_labels = ClassLabel(names = class_labels)
-    
-    # dataset separation: 800 trials for training, 100 trials for validation and 100 trials for testing
-    ids_bio = sorted(list(set(df_bio.Id.apply(lambda i: i.split('_')[0]))))
-    ids_trn, ids_dev = train_test_split(ids_bio, train_size = 0.8, random_state = 13, shuffle = True)
-    ids_dev, ids_tst = train_test_split(ids_dev, train_size = 0.5, random_state = 13, shuffle = True)
-    
-    df_trn = df_bio[df_bio.Id.apply(lambda i: i.split('_')[0]).isin(ids_trn)]
-    df_dev = df_bio[df_bio.Id.apply(lambda i: i.split('_')[0]).isin(ids_dev)]
-    df_tst = df_bio[df_bio.Id.apply(lambda i: i.split('_')[0]).isin(ids_tst)]
-    
-    dict_bio = convert_dataframe_to_dataset(df_bio)
-    dict_trn = convert_dataframe_to_dataset(df_trn)
-    dict_dev = convert_dataframe_to_dataset(df_dev)
-    dict_tst = convert_dataframe_to_dataset(df_tst)
-
-    features = Features({
-        'ids': Value(dtype = 'string'), 
-        'mentions': Sequence(Value(dtype = 'string')), 
-        'categories': Sequence(Value(dtype = 'string')),
-    })
-
-    raw_datasets = DatasetDict({
-        'trn': Dataset.from_dict(dict_trn, features = features),
-        'dev': Dataset.from_dict(dict_dev, features = features),
-        'tst': Dataset.from_dict(dict_tst, features = features),
-        'all': Dataset.from_dict(dict_bio, features = features),
-    })
-    return (raw_datasets, class_labels)
+from datasets import load_dataset
+import torch
+from transformers import (
+    AutoTokenizer, 
+    AutoModelForMaskedLM, 
+    TrainingArguments, 
+    Trainer,
+    set_seed,
+)
+from bertools.tasks.mlm.collators import DataCollatorForMLM
+from bertools.tasks.mlm.transforms import form_constant_length_blocks
 
 
-
-def tokenize_chia_dataset(raw_datasets, tokenizer, class_labels, **kwargs):
-    B_I_mapping = {l: 'I'+l[1:] for l in class_labels.names if l.startswith('B-')}
-
-    tokenized_datasets = raw_datasets.map(
-        function = lambda examples: tokenize_and_align_categories(tokenizer, examples, B_I_mapping, **kwargs), 
-        batched  = True,
+def run_mlm(config_path: str, output_dir: str, save_model: bool = True):
+    '''
+    Args:
+        config_path (str):
+            path to a .yaml file providing arguments to the job.
+            This config file must carry mandatory sections:
+                - dataset_args
+                - tokenizer_args
+                - model_args
+                - collator_args
+                - training_args
+        output_dir (str):
+            path to the folder where finetuning artifact are serialized.
+        save_model (Optional[bool], default to True):
+            whether saving trained model or not.
+    '''
+    logger.info(
+        f'''
+        #----------------------------------------------------#
+        # Running Masked Language Modeling training pipeline #
+        #----------------------------------------------------#'''
     )
-    tokenized_datasets = tokenized_datasets.map(
-        function = lambda examples: create_labels(examples, class_labels), 
-        batched  = True,
+    config_path = Path(config_path)
+    output_dir = Path(output_dir)
+    os.makedirs(output_dir, exist_ok = False)
+    logger.info(f'Saving experiment artifacts at {output_dir}')
+
+    # load & save job config
+    _job_config = OmegaConf.load(config_path)
+    job_config = OmegaConf.to_object(_job_config)
+    OmegaConf.save(_job_config, output_dir / 'job_config.yaml')
+    logger.info(f'Using job config at {config_path}')
+    
+    # ensure reproducibility
+    set_seed(job_config['global_seed'])
+    
+    # load train/valid/test datasets
+    dataset = load_dataset(**job_config['dataset_args'])
+    
+    # load tokenizer, model & collator
+    device = ('cuda' if torch.cuda.is_available() else 'cpu')
+    tokenizer = AutoTokenizer.from_pretrained(**job_config['tokenizer_args'])
+    model = AutoModelForMaskedLM.from_pretrained(**job_config['model_args']).to(device).train()
+    collator = DataCollatorForMLM(tokenizer = tokenizer, **job_config['collator_args'])
+    logger.info(f'Loaded model has {model.num_parameters()} parameters')
+
+    # prepare dataset
+    if not job_config.get('is_tokenized', False):
+        return_special_token_mask = (
+            not job_config['training_args'].get('remove_unused_columns', False)
+        )
+        dataset = dataset.map(
+            lambda examples: tokenizer(
+                examples["text"], 
+                return_special_tokens_mask = return_special_token_mask,
+                padding = False,
+                truncation = not job_config['concat_inputs'],
+            ), 
+            batched = True,
+            keep_in_memory = True,
+            remove_columns = ["text"],
+        )
+    if job_config.get('concat_inputs', False):
+        max_len = (tokenizer.model_max_length if tokenizer.model_max_length < 1e12 else 512)
+        dataset = dataset.map(
+            lambda examples: form_constant_length_blocks(examples, block_size = max_len), 
+            batched = True,
+        )
+
+    # train model
+    training_args = TrainingArguments(
+        output_dir = output_dir, logging_dir = output_dir / 'logs', **job_config['training_args'],
     )
-    return tokenized_datasets
+    trainer = Trainer(
+        model = model,
+        tokenizer = tokenizer,
+        args = training_args,
+        data_collator = collator,
+        train_dataset = dataset.get('train'),
+        eval_dataset = dataset.get('eval', None),
+    )
+    trainer.train()
+
+    # evaluate model
+    if 'test' in dataset:
+        test_result = trainer.evaluate(eval_dataset = dataset['test'], metric_key_prefix = 'test')
+        OmegaConf.save(test_result, output_dir / 'test_result.yaml')
+        for k, v in test_result.items():
+            logger.info(str(k) + ' ' + '-'*(30 - len(k)) + ' {:2f}'.format(100*v))
+    
+    # save model
+    if save_model:
+        tokenizer.save_pretrained(output_dir / 'tokenizer')
+        model.save_pretrained(output_dir / 'model')
+    logger.info('Masked Language Modeling training pipeline complete')
 
 
 
 
 
-# -------------------------- main --------------------------------
-# either loads a config file from ./logs/task/final_model_name/run_name/run_args.json
-# and store log results in same run_name folder,
-# or loads a config file from ./saves/task/final_model_name/run_name/run_args.json
-# and store trained model in same run_name folder
-def main():
+def run_ner():
+    '''
+    Adapted from https://github.com/huggingface/transformers/blob/main/examples/pytorch/token-classification/run_ner.py
+    '''
     # parse run folder and args
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", type = str, help = "path to a configuration json file")
@@ -181,33 +200,14 @@ def main():
     base_model_path = os.path.join(path_to_save, run_args['base_model_task'].upper(), run_args['base_model_name'].lower(), 'model')
     label2id = class_labels._str2int
     id2label = {i: l for l, i in label2id.items()}
-    try:
-        model = AutoModelForTokenClassification.from_pretrained(base_model_path, label2id = label2id, id2label = id2label)
-        logger.warning('Model loaded from local checkpoint.')
-    except:
-        model = AutoModelForMaskedLM.from_pretrained(run_args['hub_model_name'])
-        model.save_pretrained(base_model_path)
-        model = AutoModelForTokenClassification.from_pretrained(base_model_path, label2id = label2id, id2label = id2label)
-        logger.warning('Model downloaded from Huggingface model hub.')
-    
-    # load tokenizer
+
+    model = AutoModelForTokenClassification.from_pretrained(base_model_path, label2id = label2id, id2label = id2label)
+
     tokenizer_path = os.path.join(path_to_save, run_args['base_model_task'].upper(), run_args['base_model_name'].lower(), 'tokenizer')
     tokenizer_kwgs = ({'add_prefix_space': True} if (('model_type' in run_args) and (run_args['model_type'] in {"bloom", "gpt2", "roberta"})) else {})
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, **tokenizer_kwgs)
-        logger.warning('Tokenizer loaded from local checkpoint.')
-    except:
-        tokenizer = AutoTokenizer.from_pretrained(run_args['hub_model_name'], use_fast = True, **tokenizer_kwgs)
-        tokenizer.save_pretrained(tokenizer_path)
-        logger.warning('Tokenizer downloaded from Huggingface model hub.')
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, **tokenizer_kwgs)
 
-    if not isinstance(tokenizer, PreTrainedTokenizerFast):
-        raise ValueError(
-            "This example script only works for models that have a fast tokenizer. Checkout the big table of models at"
-            " https://huggingface.co/transformers/index.html#supported-frameworks to find the model types that meet"
-            " this requirement"
-        )
-    
+
     # preprocess dataset
     kwargs = {
         'truncation': True, 
@@ -293,11 +293,3 @@ def main():
     if arg_path != os.path.join(out_path, "run_args.json"):
         with open(os.path.join(out_path, "run_args.json"), "w") as f:
             json.dump(run_args, f)
-
-
-
-
-if __name__ == "__main__":
-    main()
-
-

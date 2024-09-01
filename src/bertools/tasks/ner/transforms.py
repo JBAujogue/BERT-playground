@@ -1,4 +1,15 @@
+def tokenize_dataset(raw_datasets, tokenizer, class_labels, **kwargs):
+    B_I_mapping = {l: 'I'+l[1:] for l in class_labels.names if l.startswith('B-')}
 
+    tokenized_datasets = raw_datasets.map(
+        function = lambda examples: tokenize_and_align_categories(tokenizer, examples, B_I_mapping, **kwargs), 
+        batched  = True,
+    )
+    tokenized_datasets = tokenized_datasets.map(
+        function = lambda examples: create_labels(examples, class_labels), 
+        batched  = True,
+    )
+    return tokenized_datasets
 
 
 def switch_B_to_I(idx, mapping_dict):

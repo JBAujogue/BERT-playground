@@ -1,12 +1,14 @@
-data_args:
-    train_dataset_path: .\data\dummy-rerank\train.tsv
-    valid_dataset_path: .\data\dummy-rerank\valid.tsv
-    test_dataset_path: .\data\dummy-rerank\test.tsv
+global_seed: 42
+
+dataset_args:
+    data_files:
+        train: ./data/dummy-rerank/train.tsv
+        eval: ./data/dummy-rerank/valid.tsv
+        test: ./data/dummy-rerank/test.tsv
 
 # params of SentenceTransformer
 model_args:
     model_name_or_path: sentence-transformers/all-mpnet-base-v2
-    device: cuda
     cache_folder:
 
 # params of model.fit
