@@ -1,5 +1,6 @@
 global_seed: 42
 
+# params of custom load_dataset
 dataset_args:
     data_files:
         train: ./data/dummy-rerank/train.tsv

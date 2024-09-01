@@ -5,27 +5,13 @@ from loguru import logger
 from transformers import set_seed
 import torch
 
-from bertools.tasks.rerank.utils import load_dataset
+from bertools.tasks.rerank.utils import load_rerank_dataset
 from bertools.tasks.rerank.trainer import RerankTrainer
 
 
 def run_rerank(config_path: str, output_dir: str, save_model: bool = True):
     '''
-    Args:
-        config_path (str):
-            path to a .yaml file providing arguments to the job.
-            This config file must carry mandatory sections:
-                - global_seed
-                - dataset_args
-                - model_args
-                - training_args
-            Model args and training args are listed in the sentence-transformers source code, 
-            see https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/SentenceTransformer.py
-            Other sections are discarded.
-        output_dir (str):
-            path to the folder where finetuning artifact are serialized.
-        save_model (Optional[bool], default to True):
-            whether saving trained model or not.
+    Run reranking training pipeline.
     '''
     logger.info(
         f'''
@@ -48,7 +34,7 @@ def run_rerank(config_path: str, output_dir: str, save_model: bool = True):
     set_seed(job_config['global_seed'])
     
     # load train/valid/test datasets
-    dataset = load_dataset(**job_config['dataset_args'])
+    dataset = load_rerank_dataset(**job_config['dataset_args'])
     
     # train model
     device = ('cuda' if torch.cuda.is_available() else 'cpu')

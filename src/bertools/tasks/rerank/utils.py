@@ -5,9 +5,9 @@ from dataclasses import dataclass
 import pandas as pd
 
 
-def load_dataset(data_files: Dict[str, Any]):
+def load_rerank_dataset(data_files: Dict[str, Any]):
     '''
-    Load the train/eval/tests splits of a dataset.
+    Load the train/eval/test splits of a dataset.
     '''
     return {k: RerankDataset.from_path(v) for k, v in data_files.items()}
 
