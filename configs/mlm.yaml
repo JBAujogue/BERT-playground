@@ -7,6 +7,8 @@ dataset_args:
     path: 'text'
     data_files:
         train: .\data\ctti\ctti-corpus-dummy.txt
+        eval: .\data\ctti\ctti-corpus-dummy.txt
+        test: .\data\ctti\ctti-corpus-dummy.txt
 
 # params of transformers.AutoTokenizer.from_pretrained
 tokenizer_args:
@@ -22,6 +24,7 @@ training_args:
     learning_rate: 1e-4
     lr_scheduler_type: 'constant'
     num_train_epochs: 3
+    max_steps: 100
     warmup_steps: 0
     gradient_accumulation_steps: 1
     per_device_train_batch_size: 6

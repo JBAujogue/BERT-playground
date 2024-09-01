@@ -1,7 +1,5 @@
-from itertools import chain
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Iterable
+from typing import Dict, List, Tuple, Iterable
 
 import torch
 from transformers import PreTrainedTokenizerBase
@@ -34,7 +32,7 @@ class DataCollatorForMLM(DataCollatorMixin):
     '''
     tokenizer: PreTrainedTokenizerBase
     task_proportions: Iterable = (12, 1.5, 1.5, 85)    # mask | random noise | keep to learn | ignore
-    pad_to_multiple_of: Optional[int] = None
+    pad_to_multiple_of: int | None = None
     return_tensors: str = "pt"
 
     def __post_init__(self):
@@ -55,7 +53,6 @@ class DataCollatorForMLM(DataCollatorMixin):
     def torch_call(
         self, examples: List[Dict[str, torch.Tensor]], *args, **kwargs
         ) -> Dict[str, torch.Tensor]:
-        # Handle dict or lists with proper padding and conversion to tensor.
         batch = self.tokenizer.pad(
             examples, return_tensors = "pt", pad_to_multiple_of = self.pad_to_multiple_of
         )
@@ -67,7 +64,7 @@ class DataCollatorForMLM(DataCollatorMixin):
         return batch
 
     def torch_edit_tokens(
-        self, inputs: torch.Tensor, special_tokens_mask: torch.Tensor
+        self, inputs: torch.Tensor, special_tokens_mask: torch.Tensor | None,
         ) -> Tuple[torch.Tensor]:
         """
         Prepare noisy tokens inputs/labels for denoising language modeling: 100% random.
@@ -77,17 +74,17 @@ class DataCollatorForMLM(DataCollatorMixin):
         
         # get special tokens mask
         if special_tokens_mask is None:
-            special_tokens_mask = [
-                self.tokenizer.get_special_tokens_mask(
-                    val, already_has_special_tokens = True
-                ) 
-                for val in labels.tolist()
-            ]
-            special_tokens_mask = torch.tensor(special_tokens_mask, dtype = torch.bool)
+            special_tokens_mask = torch.tensor(
+                data = [
+                    self.tokenizer.get_special_tokens_mask(val, already_has_special_tokens = True) 
+                    for val in labels.tolist()
+                ], 
+                dtype = torch.bool,
+            )
         else:
             special_tokens_mask = special_tokens_mask.bool()
             
-        # We split tokens into [mask | random noise | keep to learn | keep to ignore] 
+        # split tokens into [mask | random noise | keep to learn | keep to ignore] 
         # subgroups through random sampling according to proportions given in self.task_proportions
         distribution_matrix = torch.multinomial(
             self.task_proportions, 
@@ -101,33 +98,16 @@ class DataCollatorForMLM(DataCollatorMixin):
         keep_matrix = (distribution_matrix == 2).bool()
         ignr_matrix = (distribution_matrix == 3).bool()
 
-        # we mask part of tokens
+        # mask part of tokens
         inputs[mask_matrix] = self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token)
 
-        # we replace part of tokens by random ones
+        # replace part of tokens by random ones
         random_words = torch.randint(len(self.tokenizer), labels.shape, dtype=torch.long)
         inputs[rand_matrix] = random_words[rand_matrix]
         
-        # we keep part of tokens as-is
+        # keep part of tokens as-is
         # inputs[keep_matrix] = inputs[keep_matrix]
         
-        # We only compute loss on masked / randomized / learned tokens
+        # only compute loss on masked / randomized / learned tokens
         labels[ignr_matrix] = -100 
         return (inputs, labels)
-
-
-def form_constant_length_blocks(examples, block_size):
-    # Concatenate all texts.
-    keys = [k for k in examples.keys() if k != 'text']
-    concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-    total_length = len(concatenated_examples[keys[0]])
-    
-    # We could add padding instead of this drop
-    if total_length >= block_size:
-        total_length = (total_length // block_size) * block_size
-    
-    # Split by chunks of max_len
-    return {
-        k: [t[i : i+block_size] for i in range(0, total_length, block_size)]
-        for k, t in concatenated_examples.items()
-    }

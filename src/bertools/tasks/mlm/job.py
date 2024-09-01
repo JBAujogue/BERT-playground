@@ -1,7 +1,8 @@
 import os
-from typing import Optional
 from omegaconf import OmegaConf
-import logging
+from pathlib import Path
+from loguru import logger
+
 from datasets import load_dataset
 import torch
 from transformers import (
@@ -11,17 +12,11 @@ from transformers import (
     Trainer,
     set_seed,
 )
-from bertools.tasks.mlm.utils import DataCollatorForMLM, form_constant_length_blocks
+from bertools.tasks.mlm.collators import DataCollatorForMLM
+from bertools.tasks.mlm.transforms import form_constant_length_blocks
 
-logger = logging.getLogger(__name__)
 
-
-def run_mlm(
-    config_path: str,
-    logging_dir: str,
-    output_dir: Optional[str] = None,
-    save_model: bool = True,
-    ):
+def run_mlm(config_path: str, output_dir: str, save_model: bool = True):
     '''
     Args:
         config_path (str):
@@ -32,11 +27,8 @@ def run_mlm(
                 - model_args
                 - collator_args
                 - training_args
-        logging_dir (str):
-            path to the folder where finetuning metrics are logged.
-        output_dir (Optional[str], default to None):
-            path to the folder where finetuned model is persisted.
-            If not specified, model is persisted into '<logging-dir>/model/'.
+        output_dir (str):
+            path to the folder where finetuning artifact are serialized.
         save_model (Optional[bool], default to True):
             whether saving trained model or not.
     '''
@@ -46,12 +38,15 @@ def run_mlm(
         # Running Masked Language Modeling training pipeline #
         #----------------------------------------------------#'''
     )
-    config_path = os.path.abspath(config_path)
-    logging_dir = os.path.abspath(logging_dir)
+    config_path = Path(config_path)
+    output_dir = Path(output_dir)
+    os.makedirs(output_dir, exist_ok = False)
+    logger.info(f'Saving experiment artifacts at {output_dir}')
 
-    # load job config
+    # load & save job config
     _job_config = OmegaConf.load(config_path)
     job_config = OmegaConf.to_object(_job_config)
+    OmegaConf.save(_job_config, output_dir / 'job_config.yaml')
     logger.info(f'Using job config at {config_path}')
     
     # ensure reproducibility
@@ -68,52 +63,51 @@ def run_mlm(
     logger.info(f'Loaded model has {model.num_parameters()} parameters')
 
     # prepare dataset
-    if not (('is_tokenized' in job_config) and job_config['is_tokenized']):
+    if not job_config.get('is_tokenized', False):
         return_special_token_mask = (
-            not job_config['training_args']['remove_unused_columns']
-            if 'remove_unused_columns' in job_config['training_args']
-            else False
+            not job_config['training_args'].get('remove_unused_columns', False)
         )
         dataset = dataset.map(
             lambda examples: tokenizer(
                 examples["text"], 
                 return_special_tokens_mask = return_special_token_mask,
                 padding = False,
-                truncation = (False if job_config['concat_inputs'] else True),
+                truncation = not job_config['concat_inputs'],
             ), 
             batched = True,
             keep_in_memory = True,
             remove_columns = ["text"],
         )
-    if (('concat_inputs' in job_config) and job_config['concat_inputs']):
-        max_len = (
-            tokenizer.model_max_length if tokenizer.model_max_length < 1e12 else 512
-        )
+    if job_config.get('concat_inputs', False):
+        max_len = (tokenizer.model_max_length if tokenizer.model_max_length < 1e12 else 512)
         dataset = dataset.map(
             lambda examples: form_constant_length_blocks(examples, block_size = max_len), 
             batched = True,
         )
-    
-    # train, evaluate & save model
-    training_args = TrainingArguments(output_dir = logging_dir, **job_config['training_args'])
+
+    # train model
+    training_args = TrainingArguments(
+        output_dir = output_dir, logging_dir = output_dir / 'logs', **job_config['training_args'],
+    )
     trainer = Trainer(
         model = model,
         tokenizer = tokenizer,
         args = training_args,
         data_collator = collator,
-        train_dataset = dataset['train'],
-        eval_dataset = (dataset['valid'] if 'valid' in dataset else None),
+        train_dataset = dataset.get('train'),
+        eval_dataset = dataset.get('eval', None),
     )
-    logger.info(f'Logging experiment artifacts at {logging_dir}')
     trainer.train()
-    OmegaConf.save(_job_config, os.path.join(trainer.args.logging_dir, 'config.yaml'))
+
+    # evaluate model
     if 'test' in dataset:
-        trainer.evaluate(dataset['test'], metric_key_prefix = 'test')
+        test_result = trainer.evaluate(eval_dataset = dataset['test'], metric_key_prefix = 'test')
+        OmegaConf.save(test_result, output_dir / 'test_result.yaml')
+        for k, v in test_result.items():
+            logger.info(str(k) + ' ' + '-'*(30 - len(k)) + ' {:2f}'.format(100*v))
+    
+    # save model
     if save_model:
-        output_dir = (
-            os.path.abspath(output_dir) if output_dir else
-            os.path.join(trainer.args.logging_dir, 'model')
-        )
-        trainer.save_model(output_dir)
-        logger.info(f'Model saved to {output_dir}')
+        tokenizer.save_pretrained(output_dir / 'tokenizer')
+        model.save_pretrained(output_dir / 'model')
     logger.info('Masked Language Modeling training pipeline complete')
