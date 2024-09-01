@@ -38,8 +38,8 @@ def run_mlm(config_path: str, output_dir: str, save_model: bool = True):
         # Running Masked Language Modeling training pipeline #
         #----------------------------------------------------#'''
     )
-    config_path = Path(config_path)
-    output_dir = Path(output_dir)
+    config_path = Path(config_path).resolve()
+    output_dir = Path(output_dir).resolve()
     os.makedirs(output_dir, exist_ok = False)
     logger.info(f'Saving experiment artifacts at {output_dir}')
 
@@ -59,7 +59,7 @@ def run_mlm(config_path: str, output_dir: str, save_model: bool = True):
     device = ('cuda' if torch.cuda.is_available() else 'cpu')
     tokenizer = AutoTokenizer.from_pretrained(**job_config['tokenizer_args'])
     model = AutoModelForMaskedLM.from_pretrained(**job_config['model_args']).to(device).train()
-    collator = DataCollatorForMLM(tokenizer = tokenizer, **job_config['collator_args'])
+    collator = DataCollatorForMLM(tokenizer, **job_config['collator_args'])
     logger.info(f'Loaded model has {model.num_parameters()} parameters')
 
     # prepare dataset
@@ -103,8 +103,9 @@ def run_mlm(config_path: str, output_dir: str, save_model: bool = True):
     if 'test' in dataset:
         test_result = trainer.evaluate(eval_dataset = dataset['test'], metric_key_prefix = 'test')
         OmegaConf.save(test_result, output_dir / 'test_result.yaml')
-        for k, v in test_result.items():
-            logger.info(str(k) + ' ' + '-'*(30 - len(k)) + ' {:2f}'.format(100*v))
+        logger.info('Test results:' + ''.join(
+            (f'\n\t{k} ' + '-'*(30 - len(k)) + ' {:2f}'.format(100*v)) for k, v in test_result.items()
+        ))
     
     # save model
     if save_model:

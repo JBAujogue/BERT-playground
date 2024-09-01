@@ -6,9 +6,9 @@ concat_inputs: false
 dataset_args:
     path: 'text'
     data_files:
-        train: .\data\ctti\ctti-corpus-dummy.txt
-        eval: .\data\ctti\ctti-corpus-dummy.txt
-        test: .\data\ctti\ctti-corpus-dummy.txt
+        train: data/ctti/ctti-corpus-dummy.txt
+        eval: data/ctti/ctti-corpus-dummy.txt
+        test: data/ctti/ctti-corpus-dummy.txt
 
 # params of transformers.AutoTokenizer.from_pretrained
 tokenizer_args:
