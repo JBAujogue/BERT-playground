@@ -5,7 +5,7 @@ from loguru import logger
 from transformers import set_seed
 import torch
 
-from bertools.tasks.rerank.utils import load_rerank_dataset
+from bertools.tasks.rerank.dataset import load_rerank_dataset
 from bertools.tasks.rerank.trainer import RerankTrainer
 
 
