@@ -49,9 +49,8 @@ def load_chia_dataset(path_to_data):
     })
 
     raw_datasets = DatasetDict({
-        'trn': Dataset.from_dict(dict_trn, features = features),
-        'dev': Dataset.from_dict(dict_dev, features = features),
-        'tst': Dataset.from_dict(dict_tst, features = features),
-        'all': Dataset.from_dict(dict_bio, features = features),
+        'train': Dataset.from_dict(dict_trn, features = features),
+        'eval': Dataset.from_dict(dict_dev, features = features),
+        'test': Dataset.from_dict(dict_tst, features = features),
     })
     return (raw_datasets, class_labels)

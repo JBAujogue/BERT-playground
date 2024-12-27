@@ -10,14 +10,19 @@ It does **not** cover the following aspects:
 
 
 ## CLI tools
-#### Run Masked Language Modeling
+### • Masked Language Modeling
 ```shell
-python -m bertools.tasks.mlm --config-path configs/mlm.yaml --output-dir models/mlm/albert-base-v2-ctti-dummy
+python -m bertools.tasks.mlm --config-path configs/mlm.yaml --output-dir models/mlm/dummy
 ```
 
-#### Run Reranking
+### • Reranking
 ```shell
-python -m bertools.tasks.rerank --config-path configs/rerank.yaml --output-dir models/rerank/all-mpnet-base-v2-rerank-dummy
+python -m bertools.tasks.rerank --config-path configs/rerank.yaml --output-dir models/rerank/dummy
+```
+
+### • Named Entity Recognition
+```shell
+python -m bertools.tasks.ner --config-path configs/ner.yaml --output-dir models/ner/dummy
 ```
 
 
