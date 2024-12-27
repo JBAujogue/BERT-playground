@@ -9,28 +9,36 @@ It does **not** cover the use of "large" models, eg > 110M parameters
 # Getting started
 ## Initial setup
 This project uses python `3.11` as core interpreter, and poetry `1.6.1` as dependency manager.
-1) Create a new conda environment
+
+Create a new conda environment
 ```
 conda env create -f environment.yml
 ```
-
-2) Activate the environment
+Activate the environment
 ```
 conda activate bert-playground
 ```
-
-3) Install the project dependencies
+Install the project dependencies
 ```
 poetry install
 ```
-
-4) Remove the environment
+Remove the environment
 ```
 conda remove -n bert-playground --all
 ```
 
 
-## CLI tools
+## Prepare datasets
+Only prepare datasets you will use.
+
+### Chia
+Prepare Chia dataset for Named Entity Recognition
+```shell
+python -m bertools.datasets.chia build_ner_dataset --zip_file data/chia/chia.zip --output-dir data/chia/ner
+```
+
+
+## Run train experiment
 ### • Masked Language Modeling
 ```shell
 python -m bertools.tasks.mlm --config-path configs/mlm.yaml --output-dir models/mlm/dummy
