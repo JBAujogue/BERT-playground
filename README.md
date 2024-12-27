@@ -3,10 +3,31 @@
 **This is an ongoing work**
 
 This work is an attempt to explore the landscape provided by the :hugs: Transformers library, by putting the accent on completeness and explainability.
-It does **not** cover the following aspects:
-  - Experiment tracking, eg using mlflow or WandB
-  - Usage of Google Colab
-  - Usage of "large" models, eg > 110M parameters
+It does **not** cover the use of "large" models, eg > 110M parameters
+
+
+# Getting started
+## Initial setup
+This project uses python `3.11` as core interpreter, and poetry `1.6.1` as dependency manager.
+1) Create a new conda environment
+```
+conda env create -f environment.yml
+```
+
+2) Activate the environment
+```
+conda activate bert-playground
+```
+
+3) Install the project dependencies
+```
+poetry install
+```
+
+4) Remove the environment
+```
+conda remove -n bert-playground --all
+```
 
 
 ## CLI tools
