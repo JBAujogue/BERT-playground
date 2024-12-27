@@ -1,0 +1,4 @@
+data/chia/*
+!data/chia/chia.zip
+!README.md
+!.gitignore

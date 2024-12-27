@@ -1,61 +1,63 @@
+from pathlib import Path
 import json
 import zipfile
 import gzip
-
 import pandas as pd
 
 
-
-def load_texts_from_zipfile(zip_file):
+def load_texts_from_zipfile(zip_file: str | Path) -> pd.DataFrame:
+    """
+    Load texts from zipfile.
+    """
     archive = zipfile.ZipFile(zip_file, 'r')
-    text_files = [f for f in archive.namelist() if f.endswith('.txt')]
+    files = [f for f in archive.namelist() if f.endswith('.txt')]
     texts = []
-    for text_file in text_files:
-        with archive.open(text_file, 'r') as f:
-            _id = text_file.split('/')[-1][:-4]
-            text = [l.decode('utf-8') for l in f.readlines()]
-            if _id in ['NCT02348918_exc', 'NCT02348918_inc', 'NCT01735955_exc']:
-                text = '\n'.join([i.strip() for i in text])
-            else:
-                text = ' \n'.join([i.strip() for i in text])
-            text = text.replace('⁄', '/')
-            texts.append([_id, text])
-            
-    df_texts = pd.DataFrame(texts, columns = ['Id', 'Text'])
-    return df_texts
+    for file in files:
+        t_id = Path(file).stem
+        with archive.open(file, 'r') as f:
+            lines = [l.decode('utf-8').strip().replace('⁄', '/') for l in f.readlines()]
+            texts.append({'id': t_id, 'content': ' \n'.join(lines)})
+    
+    return pd.DataFrame.from_records(texts)
 
 
-def load_entities_from_zipfile(zip_file):
+def load_spans_from_zipfile(zip_file: str | Path) -> pd.DataFrame:
+    """
+    Load annotated spans from zipfile.
+    """
     archive = zipfile.ZipFile(zip_file, 'r')
-    ann_files = [f for f in archive.namelist() if f.endswith('.ann')]
-    ent_list = []
-    for ann_file in ann_files:
-        with archive.open(ann_file, 'r') as f:
-            lines = [l.decode('utf-8').replace('⁄', '/').strip() for l in f.readlines()]
-            ents = [l.split('\t') for l in lines if l.startswith('T')]
-            ents = [
-                [ann_file.split('/')[-1][:-4], ent[0], ent[2], ent[1]]
-                for ent in ents
+    file_list = [f for f in archive.namelist() if f.endswith('.ann')]
+    span_list = []
+    for file in file_list:
+        t_id = Path(file).stem
+        with archive.open(file, 'r') as f:
+            lines = [l.decode('utf-8').strip().replace('⁄', '/') for l in f.readlines()]
+            spans = [l.split('\t')[:2] for l in lines if l.startswith('T')]
+            spans = [
+                {
+                    'id': t_id, 
+                    'span_id': sp_id, 
+                    'label': label, 
+                    'start': start, 
+                    'end': end,
+                } 
+                for sp_id, sp_data in spans
+                for label, start, end in parse_span_metadata(sp_data)
             ]
-            ents = [
-                ent[:-1] + [
-                    ent[-1].replace(';', ' ').split(' ')[0], 
-                    tuple([int(v) for v in ent[-1].replace(';', ' ').split(' ')[1:]]),
-                ]
-                for ent in ents
-            ]
-            ents = [
-                ent[:-1] + [min(ent[-1]), max(ent[-1]), ent[-1]]
-                for ent in ents
-            ]
-            ent_list += ents
-            
-    df_ents = pd.DataFrame(ent_list, columns = [
-        'Id', 'Entity_id', 'Mention', 'Category', 
-        'Start_char', 'End_char', 'Char_spans',
-    ])
-    return df_ents
+            span_list += spans
+    
+    return pd.DataFrame.from_records(span_list)
 
+
+def parse_span_metadata(metadata: str) -> list[list[str | int]]:
+    """
+    Parse span metadata from raw annotation.
+    """
+    label = metadata.split(' ')[0]
+    pairs = ' '.join(metadata.split(' ')[1:]).split(';')
+    pairs = [p.split(' ') for p in pairs]
+    return [[label, int(start), int(end)] for start, end in pairs]
+    
 
 def load_bio_baseline(path_to_txt, id_offset = 0):
     # load raw lines
