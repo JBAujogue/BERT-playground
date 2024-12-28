@@ -3,13 +3,45 @@
 **This is an ongoing work**
 
 This work is an attempt to explore the landscape provided by the :hugs: Transformers library, by putting the accent on completeness and explainability.
-It does **not** cover the following aspects:
-  - Experiment tracking, eg using mlflow or WandB
-  - Usage of Google Colab
-  - Usage of "large" models, eg > 110M parameters
+It does **not** cover the use of "large" models, eg > 110M parameters
 
 
-## CLI tools
+# Getting started
+## Initial setup
+This project uses python `3.11` as core interpreter, and poetry `1.6.1` as dependency manager.
+
+Create a new conda environment
+```
+conda env create -f environment.yml
+```
+Activate the environment
+```
+conda activate bert-playground
+```
+Install the project dependencies
+```
+poetry install
+```
+Remove the environment
+```
+conda remove -n bert-playground --all
+```
+
+
+## Prepare datasets
+Only prepare datasets you will use.
+
+### Chia
+Prepare Chia dataset for Named Entity Recognition
+```shell
+python -m bertools.datasets.chia build_ner_dataset --flatten --drop-overlapped --zip_file data/chia/chia.zip --output-dir data/chia/spans-flat-nooverlap
+```
+Options:
+- `--flatten` ensures multi-expression spans are completed into spans of consecutive words.
+- `--drop-overlapped` ensures no two spans overlap.
+
+
+## Run train experiment
 ### • Masked Language Modeling
 ```shell
 python -m bertools.tasks.mlm --config-path configs/mlm.yaml --output-dir models/mlm/dummy
