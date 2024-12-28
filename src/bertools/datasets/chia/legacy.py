@@ -1,170 +1,55 @@
-import copy
+from typing import Callable
 import re
-from typing import List, Dict, Tuple, Iterable, Callable, Optional, Any
-
-
+import json
+import gzip
 import pandas as pd
 
 
-def flatten_entities(
-    df_texts: pd.DataFrame, df_ents: pd.DataFrame
-    ) -> pd.DataFrame:
-    '''
-    Replace multi-span entities by single-span entities.
-
-    :param pd.DataFrame df_text: Dataframe with 'Id' and 'Text' columns
-    :param pd.DataFrame df_ents: Dataframe of entities with columns
-            "Id", "Entity_id", "Mention", "Category", "Start_char", "End_char".
-    :return pd.DataFrame df_ents: Dataframe of entities with columns
-            "Id", "Entity_id", "Mention", "Category", "Start_char", "End_char".
-    '''
-    df_ents = copy.deepcopy(df_ents)
-    id2text = {k: v for k, v in df_texts.values.tolist()}
-
-    # compute flat mention spans
-    df_ents["Mention"] = df_ents.apply(
-        func=lambda row: id2text[row.Id][row.Start_char : row.End_char],
-        axis=1,
-    )
-    df_ents = df_ents[
-        ["Id", "Entity_id", "Mention", "Category", "Start_char", "End_char"]
-    ]
-    df_ents = df_ents.drop_duplicates(ignore_index=True)
-
-    # group by unique mention
-    df_ents = (
-        df_ents.groupby(["Id", "Mention", "Start_char", "End_char"])
-        .apply(lambda g: (g.Entity_id.tolist(), g.Category.tolist()[0]))
-        .reset_index()
-        .rename(columns={0: "Tmp"})
-    )
-    # merge entity ids
-    df_ents["Entity_id"] = df_ents.Tmp.apply(lambda t: tuple(t[0]))
-
-    # remove duplicate Categories
-    df_ents["Category"] = df_ents.Tmp.apply(lambda t: t[1])
-
-    # clean result
-    df_ents = df_ents.drop(columns=["Tmp"])
-    df_ents = df_ents.sort_values(by=["Id", "Start_char"], ignore_index=True)
-    return df_ents
-
-
-def get_overlapping_entities(row, df: pd.DataFrame) -> Tuple[List[int]]:
-    '''
-    Given an input DataFrame row, extracts ids of overlapping entities
-    found in param df.
+def load_bio_baseline(path_to_txt, id_offset = 0):
+    # load raw lines
+    with open(path_to_txt, 'r') as f:
+        texts = f.read()
+        texts = texts.split('\n\n')
+        texts = [[line.split() for line in text.split('\n')] for text in texts]
+        texts = [text for text in texts if sum([len(line) != 0 for line in text]) == len(text)]
+        
+    # get ids, tokens and labels
+    ids = [i + id_offset for i in range(len(texts))]
+    tokens = [[l[0] for l in text] for i, text in enumerate(texts)]
+    labels = [[l[-1] for l in text] for i, text in enumerate(texts)]
     
-    :param row: DataFrame row with columns 'Id', 'Entity_id', 'Start_char', 'End_char'.
-    :param df pd.DataFrame: DataFrame with columns 'Id', 'Entity_id', 'Start_char', 'End_char'.
-    :return tuple: tuple (idx_short, idx_long), with idx_short (resp. idx_long) containing the 
-        list of ids of stricty shorter (resp. longer) entities from "df" param.
-    '''
-    # get entities on same Id
-    df = df[df.Id == row.Id]
-    df = df[df.Entity_id != row.Entity_id]
-
-    lengths = df.End_char - df.Start_char
-    length = row.End_char - row.Start_char
-
-    # get longer overlaping entities
-    df_long = df[lengths > length]
-    long = df_long.apply(
-        func=lambda r: len(
-            set(range(r.Start_char, r.End_char))
-            & set(range(row.Start_char, row.End_char))
-        )
-        > 0,
-        axis=1,
-    )
-    idx_long = df_long[long].index.tolist()
-
-    # get shorter overlaping entities
-    df_short = df[lengths < length]
-    short = df_short.apply(
-        func=lambda r: len(
-            set(range(r.Start_char, r.End_char))
-            & set(range(row.Start_char, row.End_char))
-        )
-        > 0,
-        axis=1,
-    )
-    idx_short = df_short[short].index.tolist()
-    return (idx_short, idx_long)
+    # get dataset object
+    data = {'ids': ids, 'tokens': tokens, 'ner_tags': labels}
+    return data
 
 
-def map_entity_id_to_parent(
-    df_ents: pd.DataFrame, short_overlaps: Iterable
-    ) -> pd.DataFrame:
-    '''
-    Complete the list of ids of an entity by ids associated to overlapped entities.
-    
-    :param pd.DataFrame df_ents: DataFrame of entities with column 'Entity_id'. 
-    :param Iterable short_overlaps: list of tuples of same length than "df_ents" param,
-        the i'th tuple consisting of of indices of entities overlapped by the i'th entity.
-    :return pd.DataFrame df_ents: DataFrame of entities with column 'Entity_id'.
-    '''
-    df_ents = copy.deepcopy(df_ents)
-    df_ents["Child"] = short_overlaps
-
-    df_ents.Entity_id = df_ents.apply(
-        func=lambda row: row.Entity_id
-        + tuple(_id for ids in df_ents.loc[row.Child].Entity_id for _id in ids),
-        axis=1,
-    )
-    df_ents = df_ents.drop(columns="Child")
-    return df_ents
-
-
-def solve_overlapping_entities(df_ents: pd.DataFrame) -> pd.DataFrame:
-    '''
-    Compute overlap between entities, and:
-        - retain only maximal entities, e.g. entities not overlapping any larger entity.
-        - map ids of any overlapped entity towards its maximal overlapping entity.
-    
-    :param pd.DataFrame df_ents: DataFrame of entities with columns 
-        'Id', 'Entity_id', 'Start_char', 'End_char'.
-    :return pd.DataFrame df_ents: DataFrame of entities with columns 
-        'Id', 'Entity_id', 'Start_char', 'End_char'.
-    '''
-    overlaps = df_ents.apply(
-        func=lambda row: get_overlapping_entities(row, df_ents),
-        axis=1,
-    ).tolist()
-    short_overlaps = [o[0] for o in overlaps]
-    long_overlaps = [o[1] for o in overlaps]
-
-    df_ents = map_entity_id_to_parent(df_ents, short_overlaps)
-    df_ents = df_ents[[len(c) == 0 for c in long_overlaps]]
-    return df_ents
-
-
-def extract_flat_entities(
-    df_texts: pd.DataFrame, df_ents: pd.DataFrame, categories: list
-    ) -> pd.DataFrame:
-    '''
-    Transform multi-span entities into single-span entities, and:
-        - retain only maximal entities, e.g. entities not overlapping any larger entity.
-        - map ids of any overlapped entity towards its maximal overlapping entity.
-    
-    :param pd.DataFrame df_text: Dataframe with 'Id' and 'Text' columns
-    :param pd.DataFrame df_ents: Dataframe of entities with columns
-            "Id", "Entity_id", "Mention", "Category", "Start_char", "End_char".
-    :param list categories: List of categories to retain from "df_ents" param.
-    :return pd.DataFrame df_ents: Dataframe of entities with columns
-            "Id", "Entity_id", "Mention", "Category", "Start_char", "End_char".
-    '''
-    df_ents = df_ents[df_ents.Category.isin(categories)].reset_index(drop=True)
-    df_ents = flatten_entities(df_texts, df_ents)
-    df_ents = solve_overlapping_entities(df_ents)
-    df_ents = df_ents.reset_index(drop=True)
-    return df_ents
+def dicts_to_jsonl(data_list: list, filename: str, compress: bool = True) -> None:
+    """
+    Method saves list of dicts into jsonl file.
+    :param data: (list) list of dicts to be stored,
+    :param filename: (str) path to the output file. either endw with .jsonl or with .jsonl.gz
+    :param compress: (bool) should file be compressed into a gzip archive
+    """
+    if compress:
+        assert filename.endswith('.jsonl.gz'), 'When "compress" is set to True, parameter "filename" must end with ".jsonl.gz"'
+        with gzip.open(filename, 'w') as compressed:
+            for ddict in data_list:
+                jout = json.dumps(ddict) + '\n'
+                jout = jout.encode('utf-8')
+                compressed.write(jout)
+    else:
+        assert filename.endswith('.jsonl'), 'When "compress" is set to False, parameter "filename" must end with ".jsonl"'
+        with open(filename, 'w') as out:
+            for ddict in data_list:
+                jout = json.dumps(ddict) + '\n'
+                out.write(jout)
+    return
 
 
 def convert_to_bio(
     df_texts: pd.DataFrame, 
     df_ents: pd.DataFrame, 
-    tokenizer: Optional[Callable] = None,
+    tokenizer: Callable | None = None,
     ) -> pd.DataFrame:
     '''
     Convert entities into a dataframe of spans, each span being either a full entity,
@@ -243,7 +128,7 @@ def complete_relations_with_entity_data(
             "Source_mention", "Source_start_char", "Source_end_char", "Source_category",
             "Target_mention", "Target_start_char", "Target_end_char", "Target_category",
     '''
-    def retrieve_relation_data(r, df_ents: pd.DataFrame) -> List:
+    def retrieve_relation_data(r, df_ents: pd.DataFrame) -> list:
         '''
         Given "Id", "Source_id", "Target_id" from "r" param,
         returns from "df_ents" param
@@ -392,7 +277,7 @@ def merge_qualifiers(
 
 def convert_to_prompts(
     df_texts, df_ents, bos_term = '', sep_term = '\n\n###\n\n', end_term = '\n\nEND'
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, str]]:
     df_spans = convert_to_bio(df_texts, df_ents)
     return df_spans.groupby('Sequence_id').apply(
         lambda g: {
@@ -401,6 +286,3 @@ def convert_to_prompts(
             'completion': '\n\n'.join(['\n'.join((text, label)) for text, label in g[g.Category != 'O'][['Mention', 'Category']].values.tolist()]) + end_term,
         }
     ).tolist()
-
-
-
