@@ -34,8 +34,11 @@ Only prepare datasets you will use.
 ### Chia
 Prepare Chia dataset for Named Entity Recognition
 ```shell
-python -m bertools.datasets.chia build_ner_dataset --zip_file data/chia/chia.zip --output-dir data/chia/ner
+python -m bertools.datasets.chia build_ner_dataset --flatten --drop-overlapped --zip_file data/chia/chia.zip --output-dir data/chia/spans-flat-nooverlap
 ```
+Options:
+- `--flatten` ensures multi-expression spans are completed into spans of consecutive words.
+- `--drop-overlapped` ensures no two spans overlap.
 
 
 ## Run train experiment
