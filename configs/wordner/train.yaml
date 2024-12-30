@@ -1,25 +1,18 @@
 global_seed: 42
-target_fpr: 1.0
-version: 0.8.1
+target_fpr: 2.0
 
-# params of ..load.load_annotation_for_training
+# params of bertools.tasks.wordner.load.load_annotations
 dataset_args:
     data_files:
         train: 
-          - data/chia/processed/train.parquet
+          - data/chia/spans-flat-nooverlap/train.parquet
         eval:
-          - data/chia/processed/val.parquet
+          - data/chia/spans-flat-nooverlap/eval.parquet
         test:
-          - data/chia/processed/test.parquet
-    taxonomy_path: configs/taxonomy.yaml
+          - data/chia/spans-flat-nooverlap/test.parquet
     preprocess_args:
-        max_context_messages: 10
-    upsampling_coefs:
-        Extremism: 3
-        Minor Endangerment: 4
-        Sexual Content / Harassment: 3
-        Threats (Life Threatening): 1
-        Threats (Non-Life Threatening): 4
+        max_context_lines: 3
+    # upsampling_coefs:
 
 # params of transformers.AutoTokenizer.from_pretrained
 tokenizer_args:
@@ -29,30 +22,29 @@ tokenizer_args:
 model_args:
     pretrained_model_name_or_path: bert-base-uncased
 
-# params of ..transforms.collate.Collator
+# params of bertools.tasks.wordner.transforms.Collator
 collator_args: {}
 
 # params of transformers.TrainingArguments
 training_args:
-    learning_rate: 2.e-5
+    learning_rate: 5.e-5
     lr_scheduler_type: 'linear'
-    num_train_epochs: 2
+    num_train_epochs: 3
     max_steps: 0
     max_grad_norm: 1.
     warmup_ratio: 0.1
-    weight_decay: 1.e-5
+    weight_decay: 1.e-4
     gradient_accumulation_steps: 1
-    per_device_train_batch_size: 36
-    per_device_eval_batch_size: 36
+    per_device_train_batch_size: 6
+    per_device_eval_batch_size: 6
     ddp_find_unused_parameters: False
     bf16: False
-    tf32: False
+    tf32: True
     torch_compile: False
     eval_steps: 0.2
-    eval_strategy: 'steps'
+    evaluation_strategy: 'steps'
     save_strategy: 'no'
     logging_steps: 0.05
-
     report_to: none
     seed: 42
     data_seed: 23

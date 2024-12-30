@@ -1,104 +1,20 @@
 from typing import Any
-
 import pandas as pd
-from sklearn.metrics import classification_report
 
-from ..typing import Output
+from bertools.tasks.wordner.typing import Output
 
 
 def compute_metrics(gold_outputs: list[Output], pred_outputs: list[Output]) -> dict[str, Any]:
     """
-    Computes metrics accross gold vs. predictions on a list of messages.
-    """
-    # reshape to 'id' -> {'toxic': bool, 'priority': bool, 'spans': list, **extra_cols}
-    golds = {m["id"]: m for m in gold_outputs}
-    preds = {m["id"]: m for m in pred_outputs}
-
-    ids = list(golds)
-
-    # compute message-level toxicity binary classification scores
-    toxic_report = classification_report(
-        y_true=[golds[i]["toxic"] for i in ids],
-        y_pred=[preds[i]["toxic"] for i in ids],
-        zero_division=0.0,
-        output_dict=True,
-    )
-    toxic_report = recast_binary_classification_report(toxic_report)
-    toxic_report = {k: recast_value(k, v) for k, v in toxic_report.items()}
-
-    # compute message-level illegality (P0 + P1) / rest (P2 + P3 + non-toxic)
-    illegality_report = classification_report(
-        y_true=[(golds[i]["priority"] in {0, 1}) for i in ids],
-        y_pred=[(preds[i]["priority"] in {0, 1}) for i in ids],
-        zero_division=0.0,
-        output_dict=True,
-    )
-    illegality_report = recast_binary_classification_report(illegality_report)
-    illegality_report = {k: recast_value(k, v) for k, v in illegality_report.items()}
-
-    # compute message-level priority multi-class classification scores
-    priority_report = classification_report(
-        y_true=[golds[i]["priority"] for i in ids],
-        y_pred=[preds[i]["priority"] for i in ids],
-        zero_division=0.0,
-        output_dict=True,
-    )
-    priority_report = {k: recast_value(k, v) for k, v in priority_report.items()}
-    priority_report.pop("accuracy")
-
-    # compute span-level retrieval scores
-    span_report = compute_toxic_span_detection_report(golds, preds)
-    return {
-        "1 Toxicity detection": toxic_report,
-        "2 Illegality detection": illegality_report,
-        "3 Priority detection": priority_report,
-        "4 Span detection": span_report,
-    }
-
-
-def compute_word_classification_metrics(gold_labels: list[str], pred_labels: list[str]) -> dict[str, Any]:
-    """
-    Compute word-level classification metrics, eg precision, recall, accuracy and f1-score
-    for each label and a macro average.
-    """
-    metrics = ["precision", "recall", "f1-score"]
-    labels = list(set(gold_labels))
-    report = classification_report(
-        gold_labels,
-        pred_labels,
-        labels=labels,
-        zero_division=0.0,
-        output_dict=True,
-    )
-    return {
-        m: {"[Global]": round(report["macro avg"][m], 3)} | {label: round(report[label][m], 3) for label in labels}
-        for m in metrics
-    }
-
-
-def recast_binary_classification_report(report: dict[str, Any]) -> dict[str, Any]:
-    """
-    Report precision and recall of True's only instead of a balance of True and False.
-    """
-    return report["True"] | {
-        "fpr": 1 - report["False"]["recall"],
-        "total": report["macro avg"]["support"],
-        "accuracy": report["accuracy"],
-    }
-
-
-def compute_toxic_span_detection_report(
-    gold_outputs: dict[str, Output], pred_outputs: dict[str, Output]
-) -> dict[str, Any]:
-    """
     Computes precision, recall and f1-scores of toxic span retrieval,
     considering exact matches, overlaps and cooccuring spans.
     """
-    labels = list({sp["label"] for v in gold_outputs.values() for sp in v["spans"]})
+    labels = list({sp["label"] for r in gold_outputs for sp in r["spans"]})
 
-    # computes 'id' -> [(start, end, label)] view
-    golds = {k: [(sp["start"], sp["end"], sp["label"]) for sp in v["spans"]] for k, v in gold_outputs.items()}
-    preds = {k: [(sp["start"], sp["end"], sp["label"]) for sp in v["spans"]] for k, v in pred_outputs.items()}
+    # computes 'id' -> [('start', 'end', 'label')] view
+    golds = {r['id']: [(sp["start"], sp["end"], sp["label"]) for sp in r["spans"]] for r in gold_outputs}
+    preds = {r['id']: [(sp["start"], sp["end"], sp["label"]) for sp in r["spans"]] for r in pred_outputs}
+    
     # computes [(label, cooccur, overlaps, matches)] view
     golds_found = [
         (v[-1], cooccurs(v, preds[k]), overlaps(v, preds[k]), matches(v, preds[k]))
@@ -112,8 +28,8 @@ def compute_toxic_span_detection_report(
     ]
     # cast to dataframes, for subsequent groupy operation
     columns = ["label", "cooccur", "overlap", "exact match"]
-    df_golds_found = pd.DataFrame(golds_found, columns=columns)
-    df_preds_found = pd.DataFrame(preds_found, columns=columns)
+    df_golds_found = pd.DataFrame(golds_found, columns = columns)
+    df_preds_found = pd.DataFrame(preds_found, columns = columns)
 
     # compute metrics
     rec_metrics = compute_stats(df_golds_found, "recall", labels)

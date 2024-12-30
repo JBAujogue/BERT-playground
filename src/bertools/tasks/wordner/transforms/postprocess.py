@@ -1,29 +1,26 @@
 from typing import Any
-
 from loguru import logger
 from torch import Tensor
 from torch.nn.functional import softmax
 
-from ..typing import Category, Output, Record, Span, SpanGathering
+from bertools.tasks.wordner.typing import Output, Record, Span
 
 
 def postprocess_predictions(
-    record: Record,
-    taxonomy: dict[int, Category],
-    version: str,
-    label2threshold: dict[str, float] | None = None,
+    record: Record, 
+    id2label: dict[int, str], 
+    label2threshold: dict[str, float],
 ) -> Output:
     """
     Transform a record with word-level predictions into an output.
     """
-    spans = word_indices_to_spans(record, taxonomy)
-    if label2threshold is not None:
-        spans = [sp for sp in spans if is_above_threshold(label2threshold, **sp)]
-    spans_gathering = gather_spans(spans, default_category=taxonomy[0])
-    return Output(id=record["id"], version=version, **spans_gathering)
+    spans = word_indices_to_spans(record, id2label)
+    spans = [sp for sp in spans if sp["label"] != id2label[0]]
+    spans = [sp for sp in spans if is_above_threshold(label2threshold, **sp)]
+    return Output(id = record["id"], spans = spans)
 
 
-def word_indices_to_spans(record: Record, taxonomy: dict[int, Category]) -> list[Span]:
+def word_indices_to_spans(record: Record, id2label: dict[int, str]) -> list[Span]:
     """
     Convert word-level label indices in IO format into spans.
     """
@@ -47,24 +44,14 @@ def word_indices_to_spans(record: Record, taxonomy: dict[int, Category]) -> list
     changes = [i for i in range(1, len(indices)) if indices[i - 1] != indices[i]]
     return [
         Span(
-            **taxonomy[indices[i]],
-            start=offsets[i][0],
-            end=offsets[j - 1][1],
-            text=content[offsets[i][0] : offsets[j - 1][1]],
-            confidence=max(confs[i:j]),
+            start = offsets[i][0],
+            end = offsets[j - 1][1],
+            text = content[offsets[i][0] : offsets[j - 1][1]],
+            label = id2label[indices[i]],
+            confidence = max(confs[i:j]),
         )
         for i, j in zip([0] + changes, changes + [len(indices)])
     ]
-
-
-def gather_spans(spans: list[Span], default_category: Category) -> SpanGathering:
-    """
-    Aggregate spans from their exapanded form to their aggregated form.
-    """
-    spans = [sp for sp in spans if sp["label"] != default_category["label"]]
-    priority = min({default_category["priority"]} | {sp["priority"] for sp in spans})
-    toxicity = len(spans) > 0
-    return SpanGathering(toxic=toxicity, priority=priority, spans=spans)
 
 
 def is_above_threshold(

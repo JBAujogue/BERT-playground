@@ -1,13 +1,10 @@
 # :hugs: Transformers for NLP
-## Disclaimer
-**This is an ongoing work**
 
-This work is an attempt to explore the landscape provided by the :hugs: Transformers library, by putting the accent on completeness and explainability.
+**Disclaimer**: This work is an attempt to explore the landscape provided by the :hugs: Transformers library, by putting the accent on completeness and explainability.
 It does **not** cover the use of "large" models, eg > 110M parameters
 
 
 # Getting started
-## Initial setup
 This project uses python `3.11` as core interpreter, and poetry `1.6.1` as dependency manager.
 
 Create a new conda environment
@@ -28,10 +25,27 @@ conda remove -n bert-playground --all
 ```
 
 
-## Prepare datasets
-Only prepare datasets you will use.
+# Summary of the tasks
+## • Masked Language Modeling
+```shell
+python -m bertools.tasks.mlm --config-path configs/mlm.yaml --output-dir models/mlm/dummy
+```
 
-### Chia
+
+## • Reranking
+```shell
+python -m bertools.tasks.rerank --config-path configs/rerank.yaml --output-dir models/rerank/dummy
+```
+
+
+## • Named Entity Recognition
+```shell
+python -m bertools.tasks.ner --config-path configs/ner.yaml --output-dir models/ner/dummy
+```
+
+
+## • Word-level Causal Named Entity Recognition
+### Prepare training dataset
 Prepare Chia dataset for Named Entity Recognition
 ```shell
 python -m bertools.datasets.chia build_ner_dataset --flatten --drop-overlapped --zip_file data/chia/chia.zip --output-dir data/chia/spans-flat-nooverlap
@@ -40,25 +54,34 @@ Options:
 - `--flatten` ensures multi-expression spans are completed into spans of consecutive words.
 - `--drop-overlapped` ensures no two spans overlap.
 
-
-## Run train experiment
-### • Masked Language Modeling
+Train a model
 ```shell
-python -m bertools.tasks.mlm --config-path configs/mlm.yaml --output-dir models/mlm/dummy
+python -m bertools.tasks.wordner train --config-path configs/wordner/train.yaml --output-dir models/wordner/dummy
+python -m bertools.tasks.wordner evaluate --config-path configs/wordner/evaluate.yaml --base-model-dir models/wordner/dummy --output-dir eval
+```
+Run inference
+```python
+from bertools.tasks.wordner import WordLevelCausalNER
+
+model = WordLevelCausalNER('models/wordner/dummy')
+
+lines = [
+    {'id': 'NCT00236340_exc--0', 'content': 'Multiple pregnancy (more than 3 fetuses) \n'}, 
+    {'id': 'NCT00236340_exc--1', 'content': 'Maternal history of placental abruptio \n'}, 
+    {'id': 'NCT00236340_exc--2', 'content': 'Fetus with IUGR \n'}, 
+    {'id': 'NCT00236340_exc--3', 'content': 'Pregnancy complicated with pre-eclampsia \n'}, 
+    {'id': 'NCT00236340_exc--4', 'content': 'Unability to give informed consent       \n'}, 
+    {'id': 'NCT00236340_inc--0', 'content': 'Pregnant women with abdomen discumfort and ultrasound diagnosis of polyhydramnios (AFI>25cm) \n'}, 
+    {'id': 'NCT00236340_inc--1', 'content': 'Single or twin pregnancies \n'}, 
+    {'id': 'NCT00319748_exc--0', 'content': 'Had/have the following prior/concurrent therapy: \n'}, 
+    {'id': 'NCT00319748_exc--1', 'content': 'Systemic corticosteroids (oral or injectable) within 7 days of first dose of 852A (topical or inhaled steroids are allowed) \n'}
+]
+
+model(lines)
 ```
 
-### • Reranking
-```shell
-python -m bertools.tasks.rerank --config-path configs/rerank.yaml --output-dir models/rerank/dummy
-```
 
-### • Named Entity Recognition
-```shell
-python -m bertools.tasks.ner --config-path configs/ner.yaml --output-dir models/ner/dummy
-```
-
-
-## Notebooks
+# Notebooks
 - :black_square_button: = TODO
 - :white_check_mark: = Functional
 - :sparkles: = Documented

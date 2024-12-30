@@ -1,11 +1,10 @@
 import re
 from itertools import chain
 from typing import Any, Iterable
-
 from loguru import logger
 from unidecode import unidecode
 
-from ..typing import Input, Record
+from bertools.tasks.wordner.typing import Input, Record
 
 # build a table mapping all non-printable ascii characters to None
 # using 128 for ascii-only chars, for all unicode chars use "sys.maxunicode + 1" instead
@@ -14,22 +13,22 @@ NOPRINT_TRANS_TABLE = {i: None for i in range(128) if not chr(i).isprintable()}
 
 def preprocess_records(
     inputs: Iterable[Input | Record],
-    max_context_messages: int,
+    max_context_lines: int,
     prefix: str = "",
     suffix: str = "",
 ) -> list[Record]:
     """
-    Apply preprocessing steps on each message:
-        - split content into printable ascii words
-        - append prefix / suffix str supplied by 'prefix' and 'suffix' params.
-          Remark: these words are recognizable as those where the start offset equals
-          the end offset.
-        - build context of past messages specified by the 'max_context_messages' param.
-        - sort by decreasing number of words (context included).
+    Apply preprocessing steps on each line:
+    - split content into printable ascii words
+    - append prefix / suffix str supplied by 'prefix' and 'suffix' params.
+      Remark: these words are recognizable as those where the start offset equals
+      the end offset.
+    - build context of past lines specified by the 'max_context_lines' param.
+    - sort by decreasing number of words (context included).
     """
     records = split_into_printable_ascii_words(inputs)
     records = append_boundary_words(records, prefix, suffix)
-    records = build_context(records, max_context_messages)
+    records = build_context(records, max_context_lines)
     records = sort_by_length(records)
     return records
 
@@ -51,7 +50,7 @@ def split_content(record: Input | Record, pattern: re.Pattern[str]) -> Record:
     """
     results = ((to_printable_ascii(m.group()), (m.start(), m.end())) for m in pattern.finditer(record["content"]))
     filtered = [m for m in results if len(m[0]) > 0]
-    return Record(**record, words=[m[0] for m in filtered], offsets=[m[1] for m in filtered])
+    return Record(**record, words = [m[0] for m in filtered], offsets = [m[1] for m in filtered])
 
 
 def to_printable_ascii(s: str) -> str:
@@ -63,7 +62,7 @@ def to_printable_ascii(s: str) -> str:
 
 def append_boundary_words(records: list[Record], prefix: str, suffix: str) -> list[Record]:
     """
-    Append a prefix and a suffix str to each message in a list.
+    Append a prefix and a suffix str to each line in a list.
     """
     pref = to_printable_ascii(prefix)
     suff = to_printable_ascii(suffix)
@@ -76,9 +75,9 @@ def append_boundary_words(records: list[Record], prefix: str, suffix: str) -> li
 
 def append_boundary_words_to_record(record: Record, prefix: str, suffix: str) -> Record:
     """
-    Append a prefix and a suffix str to a single message.
+    Append a prefix and a suffix str to a single line.
     Prefix have offset (0, 0).
-    Suffix have offset (l, l) where l is the end char of the last word of the message.
+    Suffix have offset (l, l) where l is the end char of the last word of the libe.
     """
     if prefix:
         record["words"] = [prefix] + record["words"]
@@ -90,19 +89,19 @@ def append_boundary_words_to_record(record: Record, prefix: str, suffix: str) ->
     return record
 
 
-def build_context(records: list[Record], max_context_messages: int) -> list[Record]:
+def build_context(records: list[Record], max_context_lines: int) -> list[Record]:
     """
-    Build left context by concatenating past messages published in same channel.
+    Build left context by concatenating past lines from the text.
     """
     past = [r["words"] for r in records]
-    return [r | {"context": concat_lists(past[max(0, i - max_context_messages) : i])} for i, r in enumerate(records)]
+    return [r | {"context": concat_lists(past[max(0, i - max_context_lines) : i])} for i, r in enumerate(records)]
 
 
 def sort_by_length(records: list[Record]) -> list[Record]:
     """
-    Sort messages by decreasing number of words in context and content.
+    Sort lines by decreasing number of words in context and content.
     """
-    return sorted(records, key=lambda r: len(r["context"] + r["words"]), reverse=True)
+    return sorted(records, key = lambda r: len(r["context"] + r["words"]), reverse = True)
 
 
 def concat_lists(ls: list[list[Any]]) -> list[Any]:

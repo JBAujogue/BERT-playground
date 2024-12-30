@@ -15,23 +15,10 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
-from transformers.trainer_callback import ProgressCallback
 
-from ..load_from_file import load_annotated_channels
-from ..taxonomy import convert_taxonomy_to_id2str, load_taxonomy
-from ..evaluate import (
-    compute_metrics,
-    compute_roc_curves,
-    compute_roc_values,
-    compute_safety_thresholds,
-    save_evaluation,
-)
-from .callbacks import (
-    CustomClearMLCallback,
-    CustomMLflowCallback,
-    remove_logs_from_strout,
-)
-from ..transforms import (
+from bertools.tasks.wordner.typing import Record
+from bertools.tasks.wordner.load import load_annotations
+from bertools.tasks.wordner.transforms import (
     Collator,
     concat_lists,
     postprocess_predictions,
@@ -39,34 +26,34 @@ from ..transforms import (
     token_tensor_to_word_tensor,
     word_logits_to_word_predictions,
 )
-from ..typing import Category, Record
+from bertools.tasks.wordner.evaluate import (
+    compute_metrics,
+    compute_roc_curves,
+    compute_roc_values,
+    compute_safety_thresholds,
+    save_evaluation,
+)
 
 
-def train(
-    config_path: str | Path,
-    base_model_dir: str | Path,
-    mlflow_logging: bool = False,
-    clearml_logging: bool = False,
-) -> None:
+def train(config_path: str | Path, output_dir: str | Path) -> None:
     """
-    End-to-end training of NER model.
+    End-to-end training of word-level NER model.
     """
-    logger.info("""
-        ======================================
-        == Launching Toxbuster training job ==
-        ======================================""")
+    logger.info(
+        """
+        ==============================================
+        == Running Word-level NER training pipeline ==
+        =============================================="""
+    )
     config_path = Path(config_path).resolve()
-    base_model_dir = Path(base_model_dir).resolve()
-    logging_path = base_model_dir / "train_logs"
-    os.makedirs(logging_path, exist_ok=True)
-    logger.info(f"Saving experiment artifacts at {base_model_dir}")
+    output_dir = Path(output_dir).resolve()
+    logging_dir = output_dir / "logs"
+    os.makedirs(logging_dir, exist_ok = False)
+    logger.info(f"Saving experiment artifacts at {output_dir}")
 
     # load job config
     with open(config_path, "r") as f:
         train_config = yaml.safe_load(f)
-
-    # load taxonomy
-    taxonomy = load_taxonomy(train_config["dataset_args"]["taxonomy_path"])
 
     # ensure reproducibility
     set_seed(train_config.get("global_seed", 42))
@@ -75,98 +62,92 @@ def train(
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info(f"Using device {device}")
 
+    # load & prepare train/eval/test datasets
+    dataset_as_records = prepare_dataset_for_training(**train_config["dataset_args"])
+    dataset = {k: Dataset.from_list(v) for k, v in dataset_as_records.items()}
+    logger.info("Loaded datasets:" + "".join(f"\n\t- '{k}' with {len(v)} lines" for k, v in dataset.items()))
+
+    # load list of labels, with the empty label appearing first
+    labels = [''] + sorted(list({
+        sp['label'] for rs in dataset_as_records.values() for r in rs for sp in r['spans']
+    }))
+    id2label = {i: l for i, l in enumerate(labels)}
+    label2id = {v: k for k, v in id2label.items()}
+    logger.info("Loaded labels:" + "".join(f"\n\t- {k}: {v}" for k, v in id2label.items()))
+    
     # load tokenizer
     tokenizer_args = {"truncation_side": "left", "add_prefix_space": True} | train_config["tokenizer_args"]
     tokenizer = AutoTokenizer.from_pretrained(**tokenizer_args)
 
     # load model
-    id2str = convert_taxonomy_to_id2str(taxonomy)
-    str2id = {v: k for k, v in id2str.items()}
-    model_args = {"id2label": id2str, "label2id": str2id} | train_config["model_args"]
+    model_args = {"id2label": id2label, "label2id": label2id} | train_config["model_args"]
     model = AutoModelForTokenClassification.from_pretrained(**model_args).to(device).train()
     logger.info(f"Loaded model with {model.num_parameters()} parameters")
 
     # load collator
-    label2id = {v["label"]: k for k, v in taxonomy.items()}
     collator = Collator(tokenizer, label2id, **train_config["collator_args"])
-
-    # load & prepare train/eval/test datasets
-    dataset = prepare_dataset_for_training(**train_config["dataset_args"])
-    logger.info("Loaded datasets:" + "".join(f"\n\t- '{k}' with {len(v)} messages" for k, v in dataset.items()))
-
-    # prepare callbacks
-    callbacks = []
-    if mlflow_logging:
-        callbacks.append(CustomMLflowCallback())
-        logger.info("Using MLflow experiment tracking")
-
-    if clearml_logging:
-        callbacks.append(CustomClearMLCallback())
-        ProgressCallback.on_log = remove_logs_from_strout
-        logger.info("Using ClearML experiment tracking")
 
     # train model
     training_args = TrainingArguments(
-        output_dir=base_model_dir,
-        logging_dir=logging_path,
-        overwrite_output_dir=True,
-        remove_unused_columns=False,
+        output_dir = output_dir,
+        logging_dir = logging_dir,
+        overwrite_output_dir = True,
+        remove_unused_columns = False,
         **train_config["training_args"],
     )
     trainer = Trainer(
-        model=model,
-        tokenizer=tokenizer,
-        args=training_args,
-        data_collator=collator.collate_for_training,
-        compute_metrics=lambda p: compute_metrics_for_training(
-            p, taxonomy, train_config["version"], train_config["target_fpr"]
+        model = model,
+        tokenizer = tokenizer,
+        args = training_args,
+        data_collator = collator.collate_for_training,
+        compute_metrics = lambda p: compute_metrics_for_training(
+            p, id2label, train_config["target_fpr"],
         ),
-        callbacks=callbacks,
-        train_dataset=dataset.get("train"),
-        eval_dataset=dataset.get("eval", None),
+        train_dataset = dataset.get("train"),
+        eval_dataset = dataset.get("eval", None),
     )
     trainer.train()
     logger.success("Training phase complete")
 
     # evaluate
     if "eval" in dataset:
-        trainer.evaluate(eval_dataset=dataset["eval"], metric_key_prefix="eval")
+        trainer.evaluate(eval_dataset = dataset["eval"], metric_key_prefix = "eval")
         logger.success("Evaluation phase complete")
+    
     if "test" in dataset:
-        trainer.evaluate(eval_dataset=dataset["test"], metric_key_prefix="test")
+        trainer.evaluate(eval_dataset = dataset["test"], metric_key_prefix = "test")
         logger.success("Testing phase complete")
 
     # save artifacts
-    with open(logging_path / "train_config.yaml", "wt") as f:
-        yaml.safe_dump(train_config, f, encoding="utf-8")
+    with open(logging_dir/"train_config.yaml", "wt") as f:
+        yaml.safe_dump(train_config, f, encoding = "utf-8")
 
-    eval_result = get_trainer_last_log(trainer, prefix="eval")
+    eval_result = get_trainer_last_log(trainer, prefix = "eval")
     if eval_scores := eval_result.get("eval_scores", None):
-        os.makedirs(logging_path / "eval")
+        os.makedirs(logging_dir/"eval")
         save_evaluation(
-            save_dir=logging_path / "eval",
-            scores=eval_scores,
-            curves=eval_result["eval_curves"],
+            save_dir = logging_dir/"eval",
+            scores = eval_scores,
+            curves = eval_result["eval_curves"],
         )
-    test_result = get_trainer_last_log(trainer, prefix="test")
+    test_result = get_trainer_last_log(trainer, prefix = "test")
     if test_scores := test_result.get("test_scores", None):
-        os.makedirs(logging_path / "test")
+        os.makedirs(logging_dir/"test")
         save_evaluation(
-            save_dir=logging_path / "test",
-            scores=test_scores,
-            curves=test_result["test_curves"],
+            save_dir = logging_dir/"test",
+            scores = test_scores,
+            curves = test_result["test_curves"],
         )
-    tokenizer.save_pretrained(base_model_dir / "tokenizer")
-    model.save_pretrained(base_model_dir / "model")
+    tokenizer.save_pretrained(output_dir/"tokenizer")
+    model.save_pretrained(output_dir/"model")
 
-    with open(base_model_dir / "model_config.yaml", "wt") as f:
+    with open(output_dir/"model_config.yaml", "wt") as f:
         inference_config = {
             "max_tokens": collator.max_length,
             "preprocess_args": train_config["dataset_args"]["preprocess_args"],
             "safety_thresholds": eval_result.get("eval_safety_thresholds", {}),
-            "version": train_config["version"],
         }
-        yaml.safe_dump(inference_config, f, encoding="utf-8")
+        yaml.safe_dump(inference_config, f, encoding = "utf-8")
 
     logger.success("Job complete")
     return
@@ -174,15 +155,14 @@ def train(
 
 def prepare_dataset_for_training(
     data_files: dict[str, list[str]],
-    taxonomy_path: str,
     preprocess_args: dict[str, Any],
     upsampling_coefs: dict[str, int] | None = None,
-) -> dict[str, Dataset]:
+) -> dict[str, list[Record]]:
     """
     Load and prepare train/eval/test splits as a dict of Datasets.
     """
     return {
-        k: prepare_split_for_training(k, v, taxonomy_path, preprocess_args, upsampling_coefs)
+        k: prepare_split_for_training(k, v, preprocess_args, upsampling_coefs)
         for k, v in data_files.items()
     }
 
@@ -190,18 +170,17 @@ def prepare_dataset_for_training(
 def prepare_split_for_training(
     split_name: str,
     file_list: list[str],
-    taxonomy_path: str,
     preprocess_args: dict[str, Any],
     upsampling_coefs: dict[str, int] | None = None,
-) -> Dataset:
+) -> list[Record]:
     """
     Prepare a single train/eval/test split, and aggregate preprocessed results into a Dataset.
     """
-    channels = load_annotated_channels(file_list, taxonomy_path)
-    records = concat_lists([preprocess_records(c, **preprocess_args) for c in channels.values()])
+    texts = load_annotations(file_list)
+    records = concat_lists([preprocess_records(c, **preprocess_args) for c in texts.values()])
     if split_name == "train" and upsampling_coefs and len(upsampling_coefs) > 0:
         records = upsample_records(records, upsampling_coefs)
-    return Dataset.from_list(records)
+    return records
 
 
 def upsample_records(records: list[Record], upsampling_coefs: dict[str, int]) -> list[Record]:
@@ -209,12 +188,13 @@ def upsample_records(records: list[Record], upsampling_coefs: dict[str, int]) ->
     Duplicate each record of certain categories, as many times as specified for this category.
     """
     upsampling_records = {
-        k: [r for r in records if k in [sp["label"] for sp in r["spans"]]] * v for k, v in upsampling_coefs.items()
+        k: [r for r in records if k in [sp["label"] for sp in r["spans"]]]*v 
+        for k, v in upsampling_coefs.items()
     }
     logger.warning(
         (
             "Adding duplicates to pool of records:"
-            + "".join(f"\n\t- {k}: {len(v)} messages" for k, v in upsampling_records.items())
+            + "".join(f"\n\t- {k}: {len(v)} lines" for k, v in upsampling_records.items())
         )
     )
     for dupl in upsampling_records.values():
@@ -229,12 +209,7 @@ def upsample_records(records: list[Record], upsampling_coefs: dict[str, int]) ->
     return records
 
 
-def compute_metrics_for_training(
-    p: EvalPrediction,
-    taxonomy: dict[int, Category],
-    version: str,
-    target_fpr: int | float,
-) -> dict[str, Any]:
+def compute_metrics_for_training(p: EvalPrediction, id2label: dict[int, str], target_fpr) -> dict[str, Any]:
     """
     Compute our kpis.
     """
@@ -254,22 +229,37 @@ def compute_metrics_for_training(
 
     # convert token-level logits into word-level indices
     pred_indices_confs = [
-        word_logits_to_word_predictions(logit) for logit in token_tensor_to_word_tensor(pred_token_logits, masks)
+        word_logits_to_word_predictions(logit) 
+        for logit in token_tensor_to_word_tensor(pred_token_logits, masks)
     ]
     gold_indices_confs = [
-        word_logits_to_word_predictions(logit) for logit in token_tensor_to_word_tensor(gold_token_logits, masks)
+        word_logits_to_word_predictions(logit) 
+        for logit in token_tensor_to_word_tensor(gold_token_logits, masks)
     ]
     pred_records = (
-        Record(id=_id, content=content, offsets=offs, indices=inds, confidences=confs)
+        Record(
+            id = _id, 
+            content = content, 
+            offsets = offs, 
+            indices = inds, 
+            confidences = confs,
+        )
         for _id, content, offs, (inds, confs) in zip(ids, contents, offsets, pred_indices_confs)
     )
     gold_records = (
-        Record(id=_id, content=content, offsets=offs, indices=inds, confidences=confs)
+        Record(
+            id = _id, 
+            content = content, 
+            offsets = offs, 
+            indices = inds, 
+            confidences = confs,
+        )
         for _id, content, offs, (inds, confs) in zip(ids, contents, offsets, gold_indices_confs)
     )
     # convert into final predictions
-    pred_outputs = [postprocess_predictions(r, taxonomy, version) for r in pred_records]
-    gold_outputs = [postprocess_predictions(r, taxonomy, version) for r in gold_records]
+    pred_outputs = [postprocess_predictions(r, id2label, {}) for r in pred_records]
+    gold_outputs = [postprocess_predictions(r, id2label, {}) for r in gold_records]
+    
     # compute roc values
     roc_values = compute_roc_values(gold_outputs, pred_outputs)
 

@@ -1,18 +1,16 @@
 from typing import Iterable
-
 import numpy as np
 from loguru import logger
 from torch import LongTensor, Tensor, stack
 from transformers import BatchEncoding, PreTrainedTokenizerFast
 
-from ..typing import Record
+from bertools.tasks.wordner.typing import Record
 
 
 class Collator:
     """
     Collator class.
     """
-
     def __init__(
         self,
         tokenizer: PreTrainedTokenizerFast,
@@ -37,11 +35,22 @@ class Collator:
         return np.where(valids)[0]
 
     @staticmethod
+    def truncate(records: list[Record], masks: Tensor) -> list[Record]:
+        """
+        Truncate words and offsets to match the amount of unmasked tokens.
+        """
+        sizes = masks.sum(dim = 1)
+        return [
+            r | {'words': r['words'][:sizes[i]], 'offsets': r['offsets'][:sizes[i]]}
+            for i, r in enumerate(records)
+        ]
+
+    @staticmethod
     def build_mask_tensor(inputs: BatchEncoding) -> Tensor:
         """
         Computes a mask of shape (batch_size, num_tokens) with 0-1 entries,
         where 1 marks the position of the first token of each word.
-        The remaing positions are filled with 0, eg:
+        The remaining positions are filled with 0, eg:
             - all context tokens
             - all special tokens
             - all tokens not at the begining of a word
@@ -52,16 +61,16 @@ class Collator:
         return context_mask * (1 - special_mask) * nobegin_mask
 
     @staticmethod
-    def build_label_tensor(masks: Tensor, labels: list[Tensor], valids: Iterable[int]) -> Tensor:
+    def build_label_tensor(masks: Tensor, labels: list[Tensor]) -> Tensor:
         """
         For training purpose only.
         Computes a tensor of shape (batch_size, num_tokens), with label ids at token
         positions marking the beginning of a word with corresponding label, and -100
         everywhere else.
         """
-        indexed_pos = masks.cumsum(dim=1) * masks
-        labeled_pos = [labels[i][indexed_pos[i]] for i in valids]
-        return stack(labeled_pos, dim=0)
+        indexed_pos = masks.cumsum(dim = 1) * masks
+        labeled_pos = [labels[i][indexed_pos[i]] for i in range(len(labels))]
+        return stack(labeled_pos, dim = 0)
 
     def encode_labels(self, records: list[Record]) -> list[Tensor]:
         """
@@ -76,16 +85,16 @@ class Collator:
         Tokenize messages.
         """
         return self.tokenizer(
-            text=[e["context"] for e in records],
-            text_pair=[e["words"] for e in records],
-            padding=True,
-            truncation=True,
-            max_length=self.max_length,
-            is_split_into_words=True,
-            return_offsets_mapping=True,
-            return_token_type_ids=True,
-            return_special_tokens_mask=True,
-            return_tensors="pt",
+            text = [e["context"] for e in records],
+            text_pair = [e["words"] for e in records],
+            padding = True,
+            truncation = True,
+            max_length = self.max_length,
+            is_split_into_words = True,
+            return_offsets_mapping = True,
+            return_token_type_ids = True,
+            return_special_tokens_mask = True,
+            return_tensors = "pt",
         )
 
     def collate_for_training(self, records: list[Record]) -> BatchEncoding:
@@ -95,10 +104,10 @@ class Collator:
         """
         inputs = self.tokenize(records)
         masks = self.build_mask_tensor(inputs)
-        valids = self.get_consistent_records(records, masks)
+        records = self.truncate(records, masks)
         labels = self.encode_labels(records)
 
-        inputs["labels"] = self.build_label_tensor(masks, labels, valids)
+        inputs["labels"] = self.build_label_tensor(masks, labels)
         return inputs
 
     def __call__(self, records: list[Record]) -> dict[str, BatchEncoding | Tensor]:

@@ -1,0 +1,6 @@
+# params of bertools.tasks.wordner.model.WordLevelNER
+batch_size: 8
+
+# params of bertools.tasks.wordner.load.load_annotations
+data_files:
+    - data/chia/spans-flat-nooverlap/test.parquet
