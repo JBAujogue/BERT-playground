@@ -1,6 +1,7 @@
 import re
 from itertools import chain
 from typing import Any, Iterable
+
 from loguru import logger
 from unidecode import unidecode
 
@@ -50,7 +51,7 @@ def split_content(record: Input | Record, pattern: re.Pattern[str]) -> Record:
     """
     results = ((to_printable_ascii(m.group()), (m.start(), m.end())) for m in pattern.finditer(record["content"]))
     filtered = [m for m in results if len(m[0]) > 0]
-    return Record(**record, words = [m[0] for m in filtered], offsets = [m[1] for m in filtered])
+    return Record(**record, words=[m[0] for m in filtered], offsets=[m[1] for m in filtered])
 
 
 def to_printable_ascii(s: str) -> str:
@@ -101,7 +102,7 @@ def sort_by_length(records: list[Record]) -> list[Record]:
     """
     Sort lines by decreasing number of words in context and content.
     """
-    return sorted(records, key = lambda r: len(r["context"] + r["words"]), reverse = True)
+    return sorted(records, key=lambda r: len(r["context"] + r["words"]), reverse=True)
 
 
 def concat_lists(ls: list[list[Any]]) -> list[Any]:

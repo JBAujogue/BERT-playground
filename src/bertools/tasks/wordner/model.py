@@ -1,7 +1,8 @@
 from pathlib import Path
+
+import torch
 import yaml  # type: ignore[import-untyped]
 from loguru import logger
-import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, BatchEncoding
@@ -39,9 +40,9 @@ class WordLevelCausalNER:
         # need to remind the tokenizer that those words don't mark the beginning of a
         # sentence.
         self.tokenizer = AutoTokenizer.from_pretrained(
-            pretrained_model_name_or_path = base_model_dir/"tokenizer",
-            add_prefix_space = True,
-            truncation_side = "left",
+            pretrained_model_name_or_path=base_model_dir / "tokenizer",
+            add_prefix_space=True,
+            truncation_side="left",
             **config.get("tokenizer_args", {}),
         )
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -51,11 +52,11 @@ class WordLevelCausalNER:
             from optimum.onnxruntime import ORTModelForTokenClassification
 
             self.model = ORTModelForTokenClassification.from_pretrained(
-                model_id = base_model_dir/onnx_model_dir,
-                file_name = "model.onnx",
-                provider = device.upper()+"ExecutionProvider",
-                use_io_binding = True,
-                local_files_only = True,
+                model_id=base_model_dir / onnx_model_dir,
+                file_name="model.onnx",
+                provider=device.upper() + "ExecutionProvider",
+                use_io_binding=True,
+                local_files_only=True,
             )
             logger.warning(f"Model loaded with providers {self.model.providers}")
         # else, load safetensors model from "base_model_dir"
@@ -64,7 +65,7 @@ class WordLevelCausalNER:
 
             self.model = (
                 AutoModelForTokenClassification.from_pretrained(
-                    base_model_dir/"model",
+                    base_model_dir / "model",
                     **config.get("model_args", {}),
                 )
                 .to(device)
@@ -74,9 +75,9 @@ class WordLevelCausalNER:
 
         self.id2label = self.model.config.id2label
         self.collator = Collator(
-            tokenizer = self.tokenizer,
-            label2id = self.model.config.label2id,
-            max_tokens = config["max_tokens"],
+            tokenizer=self.tokenizer,
+            label2id=self.model.config.label2id,
+            max_tokens=config["max_tokens"],
         )
         self.batch_size = batch_size
         self.label2threshold = config.get("safety_thresholds", {})
@@ -96,7 +97,7 @@ class WordLevelCausalNER:
         token_logits = self.model(**inputs.to(self.model.device)).logits.double()
         word_logits = token_tensor_to_word_tensor(token_logits, masks)
         word_preds = [word_logits_to_word_predictions(logits) for logits in word_logits]
-        return [Record(indices = inds, confidences = confs, **r) for r, (inds, confs) in zip(records, word_preds)]
+        return [Record(indices=inds, confidences=confs, **r) for r, (inds, confs) in zip(records, word_preds)]
 
     def __call__(self, inputs: list[Input]) -> list[Output]:
         """
@@ -105,11 +106,11 @@ class WordLevelCausalNER:
         # preprocess records
         records = preprocess_records(inputs, **self.preprocess_args)
         batcher = DataLoader(
-            dataset = records,  # type: ignore
-            batch_size = self.batch_size,
-            shuffle = False,
-            pin_memory = True,
-            collate_fn = self.collator,
+            dataset=records,  # type: ignore
+            batch_size=self.batch_size,
+            shuffle=False,
+            pin_memory=True,
+            collate_fn=self.collator,
         )
         # compute word-level predictions over records
         records = concat_lists([self.compute_batched_predictions(**b) for b in batcher])

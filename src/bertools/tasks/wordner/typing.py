@@ -5,6 +5,7 @@ class Span(TypedDict):
     """
     Base class for a span, eg an occurence of a category.
     """
+
     start: int
     end: int
     label: str
@@ -16,6 +17,7 @@ class Input(TypedDict):
     """
     Base class for an input of word-level NER model.
     """
+
     id: str
     content: str
 
@@ -24,14 +26,16 @@ class Output(TypedDict):
     """
     Base class for an output of word-level NER model.
     """
+
     id: str
     spans: list[Span]
 
 
-class Record(TypedDict, total = False):
+class Record(TypedDict, total=False):
     """
     Base class for an output of word-level NER model.
     """
+
     id: str
     text_id: str
     line_id: str
@@ -44,6 +48,6 @@ class Record(TypedDict, total = False):
     spans: list[Span]
 
 
-LINE_FIELDS = ['text_id', 'line_id', 'id', 'content']
+LINE_FIELDS = ["text_id", "line_id", "id", "content"]
 SPAN_FIELDS = list(get_type_hints(Span).keys())
-SPAN_GATHERING_FIELDS = ['spans']
+SPAN_GATHERING_FIELDS = ["spans"]

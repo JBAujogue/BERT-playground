@@ -1,4 +1,5 @@
 from typing import Any
+
 from loguru import logger
 from torch import Tensor
 from torch.nn.functional import softmax
@@ -7,8 +8,8 @@ from bertools.tasks.wordner.typing import Output, Record, Span
 
 
 def postprocess_predictions(
-    record: Record, 
-    id2label: dict[int, str], 
+    record: Record,
+    id2label: dict[int, str],
     label2threshold: dict[str, float],
 ) -> Output:
     """
@@ -17,7 +18,7 @@ def postprocess_predictions(
     spans = word_indices_to_spans(record, id2label)
     spans = [sp for sp in spans if sp["label"] != id2label[0]]
     spans = [sp for sp in spans if is_above_threshold(label2threshold, **sp)]
-    return Output(id = record["id"], spans = spans)
+    return Output(id=record["id"], spans=spans)
 
 
 def word_indices_to_spans(record: Record, id2label: dict[int, str]) -> list[Span]:
@@ -44,11 +45,11 @@ def word_indices_to_spans(record: Record, id2label: dict[int, str]) -> list[Span
     changes = [i for i in range(1, len(indices)) if indices[i - 1] != indices[i]]
     return [
         Span(
-            start = offsets[i][0],
-            end = offsets[j - 1][1],
-            text = content[offsets[i][0] : offsets[j - 1][1]],
-            label = id2label[indices[i]],
-            confidence = max(confs[i:j]),
+            start=offsets[i][0],
+            end=offsets[j - 1][1],
+            text=content[offsets[i][0] : offsets[j - 1][1]],
+            label=id2label[indices[i]],
+            confidence=max(confs[i:j]),
         )
         for i, j in zip([0] + changes, changes + [len(indices)])
     ]
