@@ -13,8 +13,8 @@ def compute_metrics(gold_outputs: list[Output], pred_outputs: list[Output]) -> d
     labels = list({sp["label"] for r in gold_outputs for sp in r["spans"]})
 
     # computes 'id' -> [('start', 'end', 'label')] view
-    golds = {r['id']: [(sp["start"], sp["end"], sp["label"]) for sp in r["spans"]] for r in gold_outputs}
-    preds = {r['id']: [(sp["start"], sp["end"], sp["label"]) for sp in r["spans"]] for r in pred_outputs}
+    golds = {r["id"]: [(sp["start"], sp["end"], sp["label"]) for sp in r["spans"]] for r in gold_outputs}
+    preds = {r["id"]: [(sp["start"], sp["end"], sp["label"]) for sp in r["spans"]] for r in pred_outputs}
 
     # computes [(label, cooccur, overlaps, matches)] view
     golds_found = [
@@ -29,8 +29,8 @@ def compute_metrics(gold_outputs: list[Output], pred_outputs: list[Output]) -> d
     ]
     # cast to dataframes, for subsequent groupy operation
     columns = ["label", "cooccur", "overlap", "exact match"]
-    df_golds_found = pd.DataFrame(golds_found, columns = columns)
-    df_preds_found = pd.DataFrame(preds_found, columns = columns)
+    df_golds_found = pd.DataFrame(golds_found, columns=columns)
+    df_preds_found = pd.DataFrame(preds_found, columns=columns)
 
     # compute metrics
     rec_metrics = compute_stats(df_golds_found, "recall", labels)

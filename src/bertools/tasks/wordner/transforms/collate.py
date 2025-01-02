@@ -12,6 +12,7 @@ class Collator:
     """
     Collator class.
     """
+
     def __init__(
         self,
         tokenizer: PreTrainedTokenizerFast,
@@ -40,10 +41,9 @@ class Collator:
         """
         Truncate words and offsets to match the amount of unmasked tokens.
         """
-        sizes = masks.sum(dim = 1)
+        sizes = masks.sum(dim=1)
         return [
-            r | {'words': r['words'][:sizes[i]], 'offsets': r['offsets'][:sizes[i]]}
-            for i, r in enumerate(records)
+            r | {"words": r["words"][: sizes[i]], "offsets": r["offsets"][: sizes[i]]} for i, r in enumerate(records)
         ]
 
     @staticmethod
@@ -69,9 +69,9 @@ class Collator:
         positions marking the beginning of a word with corresponding label, and -100
         everywhere else.
         """
-        indexed_pos = masks.cumsum(dim = 1) * masks
+        indexed_pos = masks.cumsum(dim=1) * masks
         labeled_pos = [labels[i][indexed_pos[i]] for i in range(len(labels))]
-        return stack(labeled_pos, dim = 0)
+        return stack(labeled_pos, dim=0)
 
     def encode_labels(self, records: list[Record]) -> list[Tensor]:
         """
@@ -86,16 +86,16 @@ class Collator:
         Tokenize messages.
         """
         return self.tokenizer(
-            text = [e["context"] for e in records],
-            text_pair = [e["words"] for e in records],
-            padding = True,
-            truncation = True,
-            max_length = self.max_length,
-            is_split_into_words = True,
-            return_offsets_mapping = True,
-            return_token_type_ids = True,
-            return_special_tokens_mask = True,
-            return_tensors = "pt",
+            text=[e["context"] for e in records],
+            text_pair=[e["words"] for e in records],
+            padding=True,
+            truncation=True,
+            max_length=self.max_length,
+            is_split_into_words=True,
+            return_offsets_mapping=True,
+            return_token_type_ids=True,
+            return_special_tokens_mask=True,
+            return_tensors="pt",
         )
 
     def collate_for_training(self, records: list[Record]) -> BatchEncoding:
