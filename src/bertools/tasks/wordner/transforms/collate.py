@@ -5,7 +5,7 @@ from loguru import logger
 from torch import LongTensor, Tensor, stack
 from transformers import BatchEncoding, PreTrainedTokenizerFast
 
-from bertools.tasks.wordner.typing import Record
+from bertools.tasks.wordner.utils.typing import Record
 
 
 class Collator:

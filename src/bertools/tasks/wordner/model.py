@@ -15,7 +15,7 @@ from bertools.tasks.wordner.transforms import (
     token_tensor_to_word_tensor,
     word_logits_to_word_predictions,
 )
-from bertools.tasks.wordner.typing import Input, Output, Record
+from bertools.tasks.wordner.utils.typing import Input, Output, Record
 
 
 class WordLevelCausalNER:
