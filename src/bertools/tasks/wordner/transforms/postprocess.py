@@ -1,4 +1,5 @@
 from typing import Any
+
 from loguru import logger
 from torch import Tensor
 from torch.nn.functional import softmax
@@ -7,8 +8,8 @@ from bertools.tasks.wordner.typing import Output, Record, Span
 
 
 def postprocess_predictions(
-    record: Record, 
-    id2label: dict[int, str], 
+    record: Record,
+    id2label: dict[int, str],
     label2threshold: dict[str, float],
 ) -> Output:
     """

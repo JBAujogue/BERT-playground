@@ -1,6 +1,7 @@
 import re
 from itertools import chain
 from typing import Any, Iterable
+
 from loguru import logger
 from unidecode import unidecode
 

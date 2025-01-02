@@ -16,7 +16,13 @@ from transformers import (
     set_seed,
 )
 
-from bertools.tasks.wordner.typing import Record
+from bertools.tasks.wordner.evaluate import (
+    compute_metrics,
+    compute_roc_curves,
+    compute_roc_values,
+    compute_safety_thresholds,
+    save_evaluation,
+)
 from bertools.tasks.wordner.load import load_annotations
 from bertools.tasks.wordner.transforms import (
     Collator,
@@ -26,13 +32,7 @@ from bertools.tasks.wordner.transforms import (
     token_tensor_to_word_tensor,
     word_logits_to_word_predictions,
 )
-from bertools.tasks.wordner.evaluate import (
-    compute_metrics,
-    compute_roc_curves,
-    compute_roc_values,
-    compute_safety_thresholds,
-    save_evaluation,
-)
+from bertools.tasks.wordner.typing import Record
 
 
 def train(config_path: str | Path, output_dir: str | Path) -> None:
@@ -68,13 +68,13 @@ def train(config_path: str | Path, output_dir: str | Path) -> None:
     logger.info("Loaded datasets:" + "".join(f"\n\t- '{k}' with {len(v)} lines" for k, v in dataset.items()))
 
     # load list of labels, with the empty label appearing first
-    labels = [''] + sorted(list({
+    labels = [''] + sorted({
         sp['label'] for rs in dataset_as_records.values() for r in rs for sp in r['spans']
-    }))
-    id2label = {i: l for i, l in enumerate(labels)}
-    label2id = {v: k for k, v in id2label.items()}
+    })
+    id2label = dict(enumerate(labels))
+    label2id = {label: i for i, label in id2label.items()}
     logger.info("Loaded labels:" + "".join(f"\n\t- {k}: {v}" for k, v in id2label.items()))
-    
+
     # load tokenizer
     tokenizer_args = {"truncation_side": "left", "add_prefix_space": True} | train_config["tokenizer_args"]
     tokenizer = AutoTokenizer.from_pretrained(**tokenizer_args)
@@ -113,7 +113,7 @@ def train(config_path: str | Path, output_dir: str | Path) -> None:
     if "eval" in dataset:
         trainer.evaluate(eval_dataset = dataset["eval"], metric_key_prefix = "eval")
         logger.success("Evaluation phase complete")
-    
+
     if "test" in dataset:
         trainer.evaluate(eval_dataset = dataset["test"], metric_key_prefix = "test")
         logger.success("Testing phase complete")
@@ -188,7 +188,7 @@ def upsample_records(records: list[Record], upsampling_coefs: dict[str, int]) ->
     Duplicate each record of certain categories, as many times as specified for this category.
     """
     upsampling_records = {
-        k: [r for r in records if k in [sp["label"] for sp in r["spans"]]]*v 
+        k: [r for r in records if k in [sp["label"] for sp in r["spans"]]]*v
         for k, v in upsampling_coefs.items()
     }
     logger.warning(
@@ -229,29 +229,29 @@ def compute_metrics_for_training(p: EvalPrediction, id2label: dict[int, str], ta
 
     # convert token-level logits into word-level indices
     pred_indices_confs = [
-        word_logits_to_word_predictions(logit) 
+        word_logits_to_word_predictions(logit)
         for logit in token_tensor_to_word_tensor(pred_token_logits, masks)
     ]
     gold_indices_confs = [
-        word_logits_to_word_predictions(logit) 
+        word_logits_to_word_predictions(logit)
         for logit in token_tensor_to_word_tensor(gold_token_logits, masks)
     ]
     pred_records = (
         Record(
-            id = _id, 
-            content = content, 
-            offsets = offs, 
-            indices = inds, 
+            id = _id,
+            content = content,
+            offsets = offs,
+            indices = inds,
             confidences = confs,
         )
         for _id, content, offs, (inds, confs) in zip(ids, contents, offsets, pred_indices_confs)
     )
     gold_records = (
         Record(
-            id = _id, 
-            content = content, 
-            offsets = offs, 
-            indices = inds, 
+            id = _id,
+            content = content,
+            offsets = offs,
+            indices = inds,
             confidences = confs,
         )
         for _id, content, offs, (inds, confs) in zip(ids, contents, offsets, gold_indices_confs)
@@ -259,7 +259,7 @@ def compute_metrics_for_training(p: EvalPrediction, id2label: dict[int, str], ta
     # convert into final predictions
     pred_outputs = [postprocess_predictions(r, id2label, {}) for r in pred_records]
     gold_outputs = [postprocess_predictions(r, id2label, {}) for r in gold_records]
-    
+
     # compute roc values
     roc_values = compute_roc_values(gold_outputs, pred_outputs)
 

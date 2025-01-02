@@ -1,7 +1,8 @@
 from pathlib import Path
+
+import torch
 import yaml  # type: ignore[import-untyped]
 from loguru import logger
-import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, BatchEncoding

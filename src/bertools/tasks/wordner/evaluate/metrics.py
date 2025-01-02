@@ -1,4 +1,5 @@
 from typing import Any
+
 import pandas as pd
 
 from bertools.tasks.wordner.typing import Output
@@ -14,7 +15,7 @@ def compute_metrics(gold_outputs: list[Output], pred_outputs: list[Output]) -> d
     # computes 'id' -> [('start', 'end', 'label')] view
     golds = {r['id']: [(sp["start"], sp["end"], sp["label"]) for sp in r["spans"]] for r in gold_outputs}
     preds = {r['id']: [(sp["start"], sp["end"], sp["label"]) for sp in r["spans"]] for r in pred_outputs}
-    
+
     # computes [(label, cooccur, overlaps, matches)] view
     golds_found = [
         (v[-1], cooccurs(v, preds[k]), overlaps(v, preds[k]), matches(v, preds[k]))
