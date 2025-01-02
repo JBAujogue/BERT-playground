@@ -3,7 +3,7 @@ from typing import Iterable
 
 import pandas as pd
 
-from bertools.tasks.wordner.typing import LINE_FIELDS, SPAN_FIELDS, SPAN_GATHERING_FIELDS, Record
+from bertools.tasks.wordner.utils.typing import LINE_FIELDS, SPAN_FIELDS, SPAN_GATHERING_FIELDS, Record
 
 
 def fill_docstring(*args, **kwargs):

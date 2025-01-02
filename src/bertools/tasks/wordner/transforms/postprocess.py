@@ -4,7 +4,7 @@ from loguru import logger
 from torch import Tensor
 from torch.nn.functional import softmax
 
-from bertools.tasks.wordner.typing import Output, Record, Span
+from bertools.tasks.wordner.utils.typing import Output, Record, Span
 
 
 def postprocess_predictions(

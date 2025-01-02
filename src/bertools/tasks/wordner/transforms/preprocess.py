@@ -5,7 +5,7 @@ from typing import Any, Iterable
 from loguru import logger
 from unidecode import unidecode
 
-from bertools.tasks.wordner.typing import Input, Record
+from bertools.tasks.wordner.utils.typing import Input, Record
 
 # build a table mapping all non-printable ascii characters to None
 # using 128 for ascii-only chars, for all unicode chars use "sys.maxunicode + 1" instead

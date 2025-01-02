@@ -9,10 +9,10 @@ from tqdm import tqdm
 
 from bertools.tasks.wordner.evaluate.metrics import compute_metrics
 from bertools.tasks.wordner.evaluate.roc import compute_roc_curves, compute_roc_values
-from bertools.tasks.wordner.load import load_annotations
+from bertools.tasks.wordner.utils.load import load_annotations
 from bertools.tasks.wordner.model import WordLevelCausalNER
 from bertools.tasks.wordner.transforms.preprocess import concat_lists
-from bertools.tasks.wordner.typing import Input, Output
+from bertools.tasks.wordner.utils.typing import Input, Output
 
 
 def evaluate(

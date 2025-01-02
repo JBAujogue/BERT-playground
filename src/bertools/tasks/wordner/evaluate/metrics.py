@@ -2,7 +2,7 @@ from typing import Any
 
 import pandas as pd
 
-from bertools.tasks.wordner.typing import Output
+from bertools.tasks.wordner.utils.typing import Output
 
 
 def compute_metrics(gold_outputs: list[Output], pred_outputs: list[Output]) -> dict[str, Any]:

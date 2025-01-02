@@ -2,7 +2,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.metrics import roc_curve
 
-from bertools.tasks.wordner.typing import Output
+from bertools.tasks.wordner.utils.typing import Output
 
 
 def compute_roc_values(
