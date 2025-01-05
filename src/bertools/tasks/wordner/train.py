@@ -23,7 +23,6 @@ from bertools.tasks.wordner.evaluate import (
     compute_safety_thresholds,
     save_evaluation,
 )
-from bertools.tasks.wordner.utils.load import load_annotations
 from bertools.tasks.wordner.transforms import (
     Collator,
     concat_lists,
@@ -32,6 +31,7 @@ from bertools.tasks.wordner.transforms import (
     token_tensor_to_word_tensor,
     word_logits_to_word_predictions,
 )
+from bertools.tasks.wordner.utils.load import load_annotations
 from bertools.tasks.wordner.utils.typing import Record
 
 
