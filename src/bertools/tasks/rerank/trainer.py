@@ -1,122 +1,123 @@
 import os
 from pathlib import Path
-from typing import Dict, Any
-from omegaconf import OmegaConf
-from loguru import logger
+from typing import Any
 
 import pandas as pd
+from loguru import logger
+from sentence_transformers import InputExample, SentenceTransformer
+from sentence_transformers.evaluation import InformationRetrievalEvaluator
+from sentence_transformers.losses import MultipleNegativesRankingLoss
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from sentence_transformers import InputExample, SentenceTransformer
-from sentence_transformers.losses import MultipleNegativesRankingLoss
-from sentence_transformers.evaluation import InformationRetrievalEvaluator
+
+from bertools.tasks.rerank.load import RerankDataset
 
 
 class RerankTrainer:
-    '''
+    """
     Simple Trainer on a rerank task for sentence-transformers models.
     Adapted from
         https://github.com/run-llama/llama_index/blob/main/llama_index/finetuning/embeddings/sentence_transformer.py
         https://github.com/huggingface/transformers/blob/v4.37.2/src/transformers/integrations/integration_utils.py#L579
-    '''
+    """
+
     def __init__(
         self,
-        model_args: Dict[str, Any],
+        model_args: dict[str, Any],
         output_dir: str | Path,
-        train_dataset: Any,
-        eval_dataset: Any | None = None,
-        training_args: Dict[str, Any] = dict(),
-        ):
-        '''
+        train_dataset: RerankDataset,
+        eval_dataset: RerankDataset | None = None,
+        training_args: dict[str, Any] | None = None,
+    ):
+        """
         Init params.
-        training_args are listed in 
+        training_args are listed in
             https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/SentenceTransformer.py
-        '''
-        self.output_dir = output_dir
-        self.training_args = training_args
-        self.exportable_training_args = {
-            k: v for k, v in self.training_args.items() 
-            if v is None or isinstance(v, (int, float, list, tuple, dict, str, bool))
-        }
+        """
+        self.output_dir = Path(output_dir)
         self.model = SentenceTransformer(**model_args)
         self.evaluator = (
             InformationRetrievalEvaluator(
-                eval_dataset.queries, 
-                eval_dataset.corpus, 
+                eval_dataset.queries,
+                eval_dataset.corpus,
                 eval_dataset.relevant_docs,
             )
             if eval_dataset is not None
             else None
         )
         self._SummaryWriter = SummaryWriter
-        
+
+        train_args = training_args or {}
         dataloader = DataLoader(
-            dataset = [InputExample(texts = pair) for pair in train_dataset.pairs], 
-            batch_size = self.training_args.pop('batch_size', 8),
+            dataset=[InputExample(texts=pair) for pair in train_dataset.pairs],  # type: ignore
+            batch_size=train_args.pop("batch_size", 8),
         )
         loss = MultipleNegativesRankingLoss(self.model)
-        
-        self.training_args |= dict(
-            train_objectives = [(dataloader, loss)],
-            evaluator = self.evaluator,
-        )
 
-    def train(self):
-        '''
+        self.training_args = train_args | {
+            "train_objectives": [(dataloader, loss)],
+            "evaluator": self.evaluator,
+        }
+
+    def train(self) -> None:
+        """
         Train model according to training args specified in intanciation.
         Log results into a tensorboard summary.
-        '''
+        """
         self.model.fit(**self.training_args)
         if self.evaluator is not None:
-            self.send_logs_to_tensorboard(metric_key_prefix = 'eval')
+            self.send_logs_to_tensorboard(metric_key_prefix="eval")
         return
 
-    def evaluate(self, dataset: Any, metric_key_prefix: str = 'test'):
-        '''
+    def evaluate(self, dataset: RerankDataset, metric_key_prefix: str = "test") -> dict[str, float]:
+        """
         Evaluate model on an input dataset. Log results into a tensorboard summary.
-        '''
+        """
         evaluator = InformationRetrievalEvaluator(
-            dataset.queries, dataset.corpus, dataset.relevant_docs,
+            dataset.queries,
+            dataset.corpus,
+            dataset.relevant_docs,
         )
         out_dir = self.output_dir / metric_key_prefix
-        os.makedirs(out_dir, exist_ok = True)
-        score = evaluator(self.model, output_path = out_dir)
+        os.makedirs(out_dir, exist_ok=True)
+        scores = evaluator(self.model, output_path=str(out_dir))
+        scores = {k: round(float(v), 4) for k, v in scores.items()}
         self.send_logs_to_tensorboard(metric_key_prefix)
-        return score
+        return scores
 
-    def save_model(self, out_dir: str):
-        '''
+    def save_model(self, out_dir: str | Path) -> None:
+        """
         Save model into the specified directory.
-        '''
+        """
         self.model.save(str(out_dir))
         return
 
-    def send_logs_to_tensorboard(self, metric_key_prefix: str):
-        '''
+    def send_logs_to_tensorboard(self, metric_key_prefix: str) -> None:
+        """
         Maps the evaluation report .csv file generated by
         sentence-transformers into a tensorboard summary.
-        '''
-        tb_writer = self._SummaryWriter(log_dir = self.output_dir / 'logs')
-        
-        # set path to logs 
-        out_path = self.output_dir / metric_key_prefix / 'Information-Retrieval_evaluation_results.csv'
+        """
+        tb_writer = self._SummaryWriter(log_dir=self.output_dir / "logs")
+
+        # set path to logs
+        out_path = self.output_dir / metric_key_prefix / "Information-Retrieval_evaluation_results.csv"
         if os.path.isfile(out_path):
             # parse sentence-transformers scores
-            tb_scores = pd.read_csv(out_path).to_dict('records')
-    
+            tb_scores = pd.read_csv(out_path).to_dict("records")
+
             # write scores to tensorboard log file
-            max_epoch = max(scores['epoch'] for scores in tb_scores)
-            max_steps = max(scores['steps'] for scores in tb_scores) + 1
+            max_epoch = max(scores["epoch"] for scores in tb_scores)
+            max_steps = max(scores["steps"] for scores in tb_scores) + 1
             for scores in tb_scores:
-                epoch, step = scores['epoch'], scores['steps']
+                epoch, step = scores["epoch"], scores["steps"]
                 if max_epoch == -1:
                     epoch = 0
                 if step == -1:
                     step = max_steps
-    
+
                 for k, v in scores.items():
                     if isinstance(v, (int, float)):
-                        tb_writer.add_scalar(f'{metric_key_prefix}/{k}', v, epoch * max_steps + step)
+                        tb_writer.add_scalar(f"{metric_key_prefix}/{k}", v, epoch * max_steps + step)
                     else:
                         logger.warning(
                             "Trainer is attempting to log a value of "

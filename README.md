@@ -78,8 +78,25 @@ model(lines)
 
 
 ## Reranking
+Train a model
 ```shell
-python -m bertools.tasks.rerank --config-path configs/rerank.yaml --output-dir models/rerank/dummy
+python -m bertools.tasks.rerank train --config-path configs/rerank/train.yaml --output-dir models/rerank/dummy-rerank-baseline
+```
+Run inference
+```python
+from sentence_transformers import SentenceTransformer
+from bertools.tasks.rerank.inference import run_semantic_search
+
+model = SentenceTransformer('models/rerank/dummy-rerank-baseline/model')
+
+corpus = [
+    "The weather is lovely today.",
+    "It's so sunny outside!",
+    "He drove to the stadium.",
+]
+queries = ["how nice is it outside ?"]
+
+run_semantic_search(model = model, corpus = corpus, queries = queries, top_k = 3)
 ```
 
 
