@@ -1,7 +1,6 @@
 from fire import Fire
 
-from bertools.tasks.mlm.job import run_mlm
+from bertools.tasks.mlm.train import train
 
-
-if __name__ == '__main__':
-    Fire(run_mlm)
+if __name__ == "__main__":
+    Fire({"train": train})

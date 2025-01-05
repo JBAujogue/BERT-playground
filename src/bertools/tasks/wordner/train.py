@@ -35,7 +35,7 @@ from bertools.tasks.wordner.utils.load import load_annotations
 from bertools.tasks.wordner.utils.typing import Record
 
 
-def train(config_path: str | Path, output_dir: str | Path) -> None:
+def train(config_path: str | Path, output_dir: str | Path, save_model: bool = True) -> None:
     """
     End-to-end training of word-level NER model.
     """
@@ -138,8 +138,6 @@ def train(config_path: str | Path, output_dir: str | Path) -> None:
             scores=test_scores,
             curves=test_result["test_curves"],
         )
-    tokenizer.save_pretrained(output_dir / "tokenizer")
-    model.save_pretrained(output_dir / "model")
 
     with open(output_dir / "model_config.yaml", "wt") as f:
         inference_config = {
@@ -148,6 +146,10 @@ def train(config_path: str | Path, output_dir: str | Path) -> None:
             "safety_thresholds": eval_result.get("eval_safety_thresholds", {}),
         }
         yaml.safe_dump(inference_config, f, encoding="utf-8")
+
+    if save_model:
+        tokenizer.save_pretrained(output_dir / "tokenizer")
+        model.save_pretrained(output_dir / "model")
 
     logger.success("Job complete")
     return

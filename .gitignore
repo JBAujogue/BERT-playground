@@ -142,8 +142,6 @@ data/lct/*
 !data/lct/lct_corpus.tar.gz
 
 # ml experiments
-mlruns/*
-models/*
 notebooks/_misc
 
 !*.ipynb

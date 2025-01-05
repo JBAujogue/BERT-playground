@@ -27,14 +27,26 @@ This project uses `miniconda` as environment manager, `python 3.11` as core inte
 
 # Tasks
 ## Masked Language Modeling
+Train a model
 ```shell
-python -m bertools.tasks.mlm --config-path configs/mlm.yaml --output-dir models/mlm/dummy
+python -m bertools.tasks.mlm train --config-path configs/mlm/train.yaml --output-dir models/mlm/ctti-mlm-baseline
+```
+Run inference
+```python
+from transformers import pipeline
+
+model_dir = 'models/mlm/ctti-mlm-baseline'
+model = pipeline('fill-mask', tokenizer = f'{model_dir}/tokenizer', model = f'{model_dir}/model')
+
+line = 'Systemic corticosteroids (oral or [MASK]) within 7 days of first dose of 852A (topical or inhaled steroids are allowed)'
+
+model(line)
 ```
 
 
 ## Named Entity Recognition (Token-level)
 ```shell
-python -m bertools.tasks.ner --config-path configs/ner.yaml --output-dir models/ner/dummy
+python -m bertools.tasks.ner train --config-path configs/ner.yaml --output-dir models/ner/chia-ner-baseline
 ```
 
 
