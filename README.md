@@ -4,66 +4,51 @@
 It does **not** cover the use of "large" models, eg > 110M parameters
 
 
-# Getting started
-This project uses python `3.11` as core interpreter, and poetry `1.6.1` as dependency manager.
+# Setup
+This project uses `miniconda` as environment manager, `python 3.11` as core interpreter, and `poetry 1.8.3` as dependency manager.
 
-Create a new conda environment
-```
-conda env create -f environment.yml
-```
-Activate the environment
-```
-conda activate bert-playground
-```
-Install the project dependencies
-```
-poetry install
-```
-Remove the environment
-```
-conda remove -n bert-playground --all
-```
+- Create a new conda environment
+    ```
+    conda env create -f environment.yaml
+    ```
+- Activate the environment
+    ```
+    conda activate bert-playground
+    ```
+- Install the project dependencies
+    ```
+    poetry install
+    ```
+- Remove the environment once you are done using this project
+    ```
+    conda remove -n bert-playground --all
+    ```
 
 
-# Summary of the tasks
-## • Masked Language Modeling
+# Tasks
+## Masked Language Modeling
 ```shell
 python -m bertools.tasks.mlm --config-path configs/mlm.yaml --output-dir models/mlm/dummy
 ```
 
 
-## • Reranking
-```shell
-python -m bertools.tasks.rerank --config-path configs/rerank.yaml --output-dir models/rerank/dummy
-```
-
-
-## • Named Entity Recognition
+## Named Entity Recognition (Token-level)
 ```shell
 python -m bertools.tasks.ner --config-path configs/ner.yaml --output-dir models/ner/dummy
 ```
 
 
-## • Word-level Causal Named Entity Recognition
-### Prepare training dataset
-Prepare Chia dataset for Named Entity Recognition
+## Named Entity Recognition (Word-level + Causal)
+Train and evaluate a model
 ```shell
-python -m bertools.datasets.chia build_ner_dataset --flatten --drop-overlapped --zip_file data/chia/chia.zip --output-dir data/chia/spans-flat-nooverlap
-```
-Options:
-- `--flatten` ensures multi-expression spans are completed into spans of consecutive words.
-- `--drop-overlapped` ensures no two spans overlap.
-
-Train a model
-```shell
-python -m bertools.tasks.wordner train --config-path configs/wordner/train.yaml --output-dir models/wordner/dummy
-python -m bertools.tasks.wordner evaluate --config-path configs/wordner/evaluate.yaml --base-model-dir models/wordner/dummy --output-dir eval
+python -m bertools.tasks.wordner train --config-path configs/wordner/train.yaml --output-dir models/wordner/chia-ner-baseline
+python -m bertools.tasks.wordner evaluate --config-path configs/wordner/evaluate.yaml --base-model-dir models/wordner/chia-ner-baseline --output-dir eval
 ```
 Run inference
 ```python
 from bertools.tasks.wordner import WordLevelCausalNER
 
-model = WordLevelCausalNER('models/wordner/dummy')
+model = WordLevelCausalNER('models/wordner/chia-ner-baseline')
 
 lines = [
     {'id': 'NCT00236340_exc--0', 'content': 'Multiple pregnancy (more than 3 fetuses) \n'}, 
@@ -76,9 +61,25 @@ lines = [
     {'id': 'NCT00319748_exc--0', 'content': 'Had/have the following prior/concurrent therapy: \n'}, 
     {'id': 'NCT00319748_exc--1', 'content': 'Systemic corticosteroids (oral or injectable) within 7 days of first dose of 852A (topical or inhaled steroids are allowed) \n'}
 ]
-
 model(lines)
 ```
+
+
+## Reranking
+```shell
+python -m bertools.tasks.rerank --config-path configs/rerank.yaml --output-dir models/rerank/dummy
+```
+
+
+# Datasets
+## Chia
+Prepare Chia dataset for Named Entity Recognition
+```shell
+python -m bertools.datasets.chia build_ner_dataset --flatten --drop-overlapped --zip_file data/chia/chia.zip --output-dir data/chia/ner-baseline
+```
+Options:
+- `--flatten` ensures multi-expression spans are completed into spans of consecutive words.
+- `--drop-overlapped` ensures no two spans overlap.
 
 
 # Notebooks
