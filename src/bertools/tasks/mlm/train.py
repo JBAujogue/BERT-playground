@@ -91,22 +91,22 @@ def train(config_path: str | Path, output_dir: str | Path, save_model: bool = Tr
     trainer.train()
     logger.success("Training phase complete")
 
-    # evaluate
+    # evaluate model
     if "test" in dataset:
         test_result = trainer.evaluate(eval_dataset=dataset["test"], metric_key_prefix="test")
         logger.info(
             "Test results:"
             + "".join((f"\n\t{k} " + "-" * (30 - len(k)) + " {:2f}".format(100 * v)) for k, v in test_result.items())
         )
+        # save eval
+        os.makedirs(logging_dir / "test")
+        with open(logging_dir / "test" / "scores.yaml", "wt") as f:
+            yaml.safe_dump(test_result, f, encoding="utf-8")
         logger.success("Testing phase complete")
 
-    # save artifacts
+    # save train config
     with open(logging_dir / "train_config.yaml", "wt") as f:
         yaml.safe_dump(train_config, f, encoding="utf-8")
-
-    os.makedirs(logging_dir / "test")
-    with open(logging_dir / "test" / "scores.yaml", "wt") as f:
-        yaml.safe_dump(test_result, f, encoding="utf-8")
 
     # save model
     if save_model:
