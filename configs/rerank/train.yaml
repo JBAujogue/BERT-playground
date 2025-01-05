@@ -3,9 +3,9 @@ global_seed: 42
 # params of custom load_dataset
 dataset_args:
     data_files:
-        train: ./data/dummy-rerank/train.tsv
-        eval: ./data/dummy-rerank/valid.tsv
-        test: ./data/dummy-rerank/test.tsv
+        train: data/dummy-rerank/train.tsv
+        eval: data/dummy-rerank/valid.tsv
+        test: data/dummy-rerank/test.tsv
 
 # params of SentenceTransformer
 model_args:
@@ -14,14 +14,14 @@ model_args:
 
 # params of model.fit
 training_args:
-    epochs: 1
+    epochs: 3
     steps_per_epoch:
     scheduler: warmupcosine
     warmup_steps: 10
     optimizer_params:
-      lr: 2e-5
-    weight_decay: 1e-3
-    batch_size: 4
+      lr: 2.e-5
+    weight_decay: 1.e-3
+    batch_size: 6
     evaluation_steps: 5
     save_best_model: false
     max_grad_norm: 1
