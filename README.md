@@ -27,8 +27,22 @@ This project uses `miniconda` as environment manager, `python 3.11` as core inte
 
 # Tasks
 ## Masked Language Modeling
+Train a model
 ```shell
 python -m bertools.tasks.mlm train --config-path configs/mlm/train.yaml --output-dir models/mlm/ctti-mlm-baseline
+```
+Run inference
+```python
+from transformers import pipeline
+
+model = pipeline(
+    task = 'fill-mask', 
+    tokenizer = 'models/mlm/ctti-mlm-baseline/tokenizer',
+    model = 'models/mlm/ctti-mlm-baseline/model',
+)
+line = 'Systemic corticosteroids (oral or [MASK]) within 7 days of first dose of 852A (topical or inhaled steroids are allowed)'
+
+model(line)
 ```
 
 
