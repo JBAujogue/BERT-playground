@@ -35,11 +35,9 @@ Run inference
 ```python
 from transformers import pipeline
 
-model = pipeline(
-    task = 'fill-mask', 
-    tokenizer = 'models/mlm/ctti-mlm-baseline/tokenizer',
-    model = 'models/mlm/ctti-mlm-baseline/model',
-)
+model_dir = 'models/mlm/ctti-mlm-baseline'
+model = pipeline('fill-mask', tokenizer = f'{model_dir}/tokenizer', model = f'{model_dir}/model')
+
 line = 'Systemic corticosteroids (oral or [MASK]) within 7 days of first dose of 852A (topical or inhaled steroids are allowed)'
 
 model(line)
