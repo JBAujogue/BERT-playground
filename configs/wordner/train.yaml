@@ -1,31 +1,26 @@
 global_seed: 42
 target_fpr: 2.0
 
-# params of bertools.tasks.wordner.load.load_annotations
 dataset_args:
     data_files:
         train: 
-          - data/chia/spans-flat-nooverlap/train.parquet
+          - data/chia/ner-baseline/train.parquet
         eval:
-          - data/chia/spans-flat-nooverlap/eval.parquet
+          - data/chia/ner-baseline/eval.parquet
         test:
-          - data/chia/spans-flat-nooverlap/test.parquet
+          - data/chia/ner-baseline/test.parquet
     preprocess_args:
         max_context_lines: 3
     # upsampling_coefs:
 
-# params of transformers.AutoTokenizer.from_pretrained
 tokenizer_args:
     pretrained_model_name_or_path: bert-base-uncased
 
-# params of transformers.AutoModelForTokenClassification.from_pretrained
 model_args:
     pretrained_model_name_or_path: bert-base-uncased
 
-# params of bertools.tasks.wordner.transforms.Collator
 collator_args: {}
 
-# params of transformers.TrainingArguments
 training_args:
     learning_rate: 5.e-5
     lr_scheduler_type: 'linear'
