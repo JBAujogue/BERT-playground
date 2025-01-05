@@ -17,7 +17,7 @@ from bertools.tasks.mlm.collators import DataCollatorForMLM
 from bertools.tasks.mlm.transforms import form_constant_length_blocks
 
 
-def train(config_path: str, output_dir: str, save_model: bool = True):
+def train(config_path: str | Path, output_dir: str | Path, save_model: bool = True):
     """
     End-to-end training of a Masked Language Model.
     """

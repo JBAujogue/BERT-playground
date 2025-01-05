@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple
+from typing import Iterable, Tuple
 
 import torch
 from transformers import PreTrainedTokenizerBase
@@ -41,7 +41,7 @@ class DataCollatorForMLM(DataCollatorMixin):
         self.task_proportions = tuple(abs(v) for v in self.task_proportions)
         if sum(self.task_proportions) > 0:
             tot = sum(self.task_proportions)
-            self.task_proportions = torch.tensor(tuple(v / tot for v in self.task_proportions))
+            self.task_proportions_tensor = torch.tensor(tuple(v / tot for v in self.task_proportions))
         else:
             raise ValueError('"task_proportions" sum of entites should be positive"')
 
@@ -51,7 +51,7 @@ class DataCollatorForMLM(DataCollatorMixin):
     def numpy_call(self, *args, **kwargs):
         raise NotImplementedError("This data collator is Pytorch-only")
 
-    def torch_call(self, examples: List[Dict[str, torch.Tensor]], *args, **kwargs) -> Dict[str, torch.Tensor]:
+    def torch_call(self, examples: list[dict[str, torch.Tensor]], *args, **kwargs) -> dict[str, torch.Tensor]:
         batch = self.tokenizer.pad(examples, return_tensors="pt", pad_to_multiple_of=self.pad_to_multiple_of)
         special_tokens_mask = batch.pop("special_tokens_mask", None)
         batch["input_ids"], batch["labels"] = self.torch_edit_tokens(
@@ -64,7 +64,7 @@ class DataCollatorForMLM(DataCollatorMixin):
         self,
         inputs: torch.Tensor,
         special_tokens_mask: torch.Tensor | None,
-    ) -> Tuple[torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Prepare noisy tokens inputs/labels for denoising language modeling: 100% random.
         """
@@ -84,14 +84,16 @@ class DataCollatorForMLM(DataCollatorMixin):
             special_tokens_mask = special_tokens_mask.bool()
 
         # split tokens into [mask | random noise | keep to learn | keep to ignore]
-        # subgroups through random sampling according to proportions given in self.task_proportions
-        distribution_matrix = torch.multinomial(
-            self.task_proportions,
-            labels.nelement(),
-            replacement=True,
-        ).reshape(labels.shape)
-        distribution_matrix.masked_fill_(special_tokens_mask, value=3)
-
+        # subgroups through random sampling according to proportions given in self.task_proportions_tensor
+        distribution_matrix = (
+            torch.multinomial(
+                self.task_proportions_tensor,
+                labels.nelement(),
+                replacement=True,
+            )
+            .reshape(labels.shape)
+            .masked_fill_(special_tokens_mask, value=3)
+        )
         mask_matrix = (distribution_matrix == 0).bool()
         rand_matrix = (distribution_matrix == 1).bool()
         # keep_matrix = (distribution_matrix == 2).bool()
