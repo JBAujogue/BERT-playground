@@ -21,10 +21,10 @@ model_args:
 # params of transformers.TrainingArguments
 training_args:
     evaluation_strategy: 'no'
-    learning_rate: 1e-4
+    learning_rate: 1.e-4
     lr_scheduler_type: 'constant'
     num_train_epochs: 3
-    max_steps: 100
+    max_steps: 500
     warmup_steps: 0
     gradient_accumulation_steps: 1
     per_device_train_batch_size: 6
@@ -33,7 +33,7 @@ training_args:
     dataloader_num_workers: 0
     bf16: false
     tf32: true
-    torch_compile: false # needs triton, which is linux-only
+    torch_compile: false
     save_strategy: 'no'
     logging_steps: 100
     seed: 42
