@@ -57,7 +57,6 @@ class Collator:
             - all special tokens
             - all tokens not at the begining of a word
         """
-        context_mask = inputs["token_type_ids"]
         special_mask = inputs.pop("special_tokens_mask")
         nobegin_mask = (inputs.pop("offset_mapping")[:, :, 0] == 0).long()
         # todo: mask 1st token of words with 0 thickness
@@ -66,16 +65,14 @@ class Collator:
         # after left truncation by the tokenizer
         general_mask = (1 - special_mask) * nobegin_mask
 
-        # mask words belonging to the context, if any
-        word_count_in_encoded = general_mask.sum(dim=1)
-        word_count_to_discard = [max(0, word_count_in_encoded[i] - len(r["words"])) for i, r in enumerate(records)]
-        
+        # compute number of context words to mask
+        num_word_in_encoded = general_mask.sum(dim=1)
+        num_word_to_discard = [max(0, num_word_in_encoded[i] - len(r["words"])) for i, r in enumerate(records)]
 
-        # mask 1st token of words in context
-        context_lengths = [len(r["context"]) for r in records]
-        
-        
-        return context_mask * (1 - special_mask) * nobegin_mask
+        # compute mask hiding context words
+        cum_mask = general_mask.cumsum(dim=1)
+        context_mask = stack([(cum_mask[i] > num_word_to_discard[i]).long() for i in enumerate(records)], dim=0)
+        return context_mask * general_mask
 
     @staticmethod
     def build_label_tensor(masks: Tensor, labels: list[Tensor]) -> Tensor:
@@ -132,8 +129,9 @@ class Collator:
         token of each word.
         """
         inputs = self.tokenize(records)
-        masks = self.build_mask_tensor(inputs).bool()
-        return {"records": records, "inputs": inputs, "masks": masks}
+        masks = self.build_mask_tensor(inputs)
+        records = self.truncate_records(records, masks)
+        return {"records": records, "inputs": inputs, "masks": masks.bool()}
 
 
 def spans_to_indices(record: Record, label2id: dict[str, int]) -> list[int]:
