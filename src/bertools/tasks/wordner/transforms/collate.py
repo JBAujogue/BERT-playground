@@ -41,10 +41,9 @@ class Collator:
         """
         Truncate words and offsets to match the amount of unmasked tokens.
         """
-        word_count_in_encoded = masks.sum(dim=1)
-        word_count_to_discard = [max(0, len(r["words"]) - word_count_in_encoded[i]) for i, r in enumerate(records)]
+        num_word_in_encoded = masks.sum(dim=1)
         return [
-            r | {"words": r["words"][word_count_to_discard[i]:], "offsets": r["offsets"][word_count_to_discard[i]:]} for i, r in enumerate(records)
+            r | {"words": r["words"][-num_word_in_encoded[i]:], "offsets": r["offsets"][-num_word_in_encoded[i]:]} for i, r in enumerate(records)
         ]
 
     @staticmethod
