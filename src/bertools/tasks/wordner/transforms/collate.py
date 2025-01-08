@@ -37,17 +37,18 @@ class Collator:
         return np.where(valids)[0]
 
     @staticmethod
-    def truncate(records: list[Record], masks: Tensor) -> list[Record]:
+    def truncate_records(records: list[Record], masks: Tensor) -> list[Record]:
         """
         Truncate words and offsets to match the amount of unmasked tokens.
         """
-        sizes = masks.sum(dim=1)
+        word_count_in_encoded = masks.sum(dim=1)
+        word_count_to_discard = [max(0, len(r["words"]) - word_count_in_encoded[i]) for i, r in enumerate(records)]
         return [
-            r | {"words": r["words"][: sizes[i]], "offsets": r["offsets"][: sizes[i]]} for i, r in enumerate(records)
+            r | {"words": r["words"][word_count_to_discard[i]:], "offsets": r["offsets"][word_count_to_discard[i]:]} for i, r in enumerate(records)
         ]
 
     @staticmethod
-    def build_mask_tensor(inputs: BatchEncoding) -> Tensor:
+    def build_mask_tensor(inputs: BatchEncoding, records: list[Record]) -> Tensor:
         """
         Computes a mask of shape (batch_size, num_tokens) with 0-1 entries,
         where 1 marks the position of the first token of each word.
@@ -59,6 +60,21 @@ class Collator:
         context_mask = inputs["token_type_ids"]
         special_mask = inputs.pop("special_tokens_mask")
         nobegin_mask = (inputs.pop("offset_mapping")[:, :, 0] == 0).long()
+        # todo: mask 1st token of words with 0 thickness
+
+        # mask only showing the positions of the first token of each word
+        # after left truncation by the tokenizer
+        general_mask = (1 - special_mask) * nobegin_mask
+
+        # mask words belonging to the context, if any
+        word_count_in_encoded = general_mask.sum(dim=1)
+        word_count_to_discard = [max(0, word_count_in_encoded[i] - len(r["words"])) for i, r in enumerate(records)]
+        
+
+        # mask 1st token of words in context
+        context_lengths = [len(r["context"]) for r in records]
+        
+        
         return context_mask * (1 - special_mask) * nobegin_mask
 
     @staticmethod
@@ -86,14 +102,12 @@ class Collator:
         Tokenize messages.
         """
         return self.tokenizer(
-            text=[e["context"] for e in records],
-            text_pair=[e["words"] for e in records],
+            text=[e["context"] + e["words"] for e in records],
             padding=True,
             truncation=True,
             max_length=self.max_length,
             is_split_into_words=True,
             return_offsets_mapping=True,
-            return_token_type_ids=True,
             return_special_tokens_mask=True,
             return_tensors="pt",
         )
@@ -104,8 +118,8 @@ class Collator:
         Computes torch tensors of token ids and labels.
         """
         inputs = self.tokenize(records)
-        masks = self.build_mask_tensor(inputs)
-        records = self.truncate(records, masks)
+        masks = self.build_mask_tensor(inputs, records)
+        records = self.truncate_records(records, masks)
         labels = self.encode_labels(records)
 
         inputs["labels"] = self.build_label_tensor(masks, labels)
