@@ -32,22 +32,22 @@ def word_indices_to_spans(record: Record, id2label: dict[int, str]) -> list[Span
 
     if len(offsets) != len(indices):
         logger.warning(f"Length mismatch between {len(offsets)} offsets and {len(indices)} labels")
+
+    # discard items corresponding to words without thickness
+    thicks = [i for i in range(len(indices)) if offsets[i][1] != offsets[i][0]]
+    offsets = [offsets[i] for i in thicks]
+    indices = [indices[i] for i in thicks]
+    confs = [confs[i] for i in thicks]
     if len(indices) == 0:
         return []
 
-    # discard items corresponding to words without thickness
-    thicks = [i for i in range(len(offsets)) if offsets[i][1] != offsets[i][0]]
-    offsets = [off for i, off in enumerate(offsets) if i in thicks]
-    indices = [idx for i, idx in enumerate(indices) if i in thicks]
-    confs = [conf for i, conf in enumerate(confs) if i in thicks]
-
     # spot word indices where there is a change of label, marking span boundaries
-    changes = [i for i in range(1, len(indices)) if indices[i - 1] != indices[i]]
+    changes = [i for i in range(1, len(indices)) if indices[i-1] != indices[i]]
     return [
         Span(
             start=offsets[i][0],
-            end=offsets[j - 1][1],
-            text=content[offsets[i][0] : offsets[j - 1][1]],
+            end=offsets[j-1][1],
+            text=content[offsets[i][0] : offsets[j-1][1]],
             label=id2label[indices[i]],
             confidence=max(confs[i:j]),
         )
