@@ -11,15 +11,17 @@ dataset_args:
           - data/chia/ner-baseline/test.parquet
     preprocess_args:
         max_context_lines: 3
+        prefix: 'START:'
     # upsampling_coefs:
 
 tokenizer_args:
-    pretrained_model_name_or_path: bert-base-uncased
+    pretrained_model_name_or_path: microsoft/deberta-v3-base
 
 model_args:
-    pretrained_model_name_or_path: bert-base-uncased
+    pretrained_model_name_or_path: microsoft/deberta-v3-base
 
-collator_args: {}
+collator_args:
+    max_tokens: 1024
 
 training_args:
     learning_rate: 5.e-5

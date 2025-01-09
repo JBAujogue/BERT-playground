@@ -58,7 +58,6 @@ class Collator:
         """
         special_mask = inputs.pop("special_tokens_mask")
         nobegin_mask = (inputs.pop("offset_mapping")[:, :, 0] == 0).long()
-        # todo: mask 1st token of words with 0 thickness
 
         # mask only showing the positions of the first token of each word
         # after left truncation by the tokenizer
@@ -70,7 +69,7 @@ class Collator:
 
         # compute mask hiding context words
         cum_mask = general_mask.cumsum(dim=1)
-        context_mask = stack([(cum_mask[i] > num_word_to_discard[i]).long() for i in enumerate(records)], dim=0)
+        context_mask = stack([(cum_mask[i] > num_word_to_discard[i]).long() for i in range(len(records))], dim=0)
         return context_mask * general_mask
 
     @staticmethod
@@ -117,7 +116,6 @@ class Collator:
         masks = self.build_mask_tensor(inputs, records)
         records = self.truncate_records(records, masks)
         labels = self.encode_labels(records)
-
         inputs["labels"] = self.build_label_tensor(masks, labels)
         return inputs
 
@@ -128,7 +126,7 @@ class Collator:
         token of each word.
         """
         inputs = self.tokenize(records)
-        masks = self.build_mask_tensor(inputs)
+        masks = self.build_mask_tensor(inputs, records)
         records = self.truncate_records(records, masks)
         return {"records": records, "inputs": inputs, "masks": masks.bool()}
 
