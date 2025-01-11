@@ -17,6 +17,7 @@ def preprocess_records(
     max_context_lines: int,
     prefix: str = "",
     suffix: str = "",
+    context_separator: str = "",
 ) -> list[Record]:
     """
     Apply preprocessing steps on each line:
@@ -29,7 +30,7 @@ def preprocess_records(
     """
     records = split_into_printable_ascii_words(inputs)
     records = append_boundary_words(records, prefix, suffix)
-    records = build_context(records, max_context_lines)
+    records = build_context(records, max_context_lines, context_separator)
     records = sort_by_length(records)
     return records
 
@@ -90,12 +91,20 @@ def append_boundary_words_to_record(record: Record, prefix: str, suffix: str) ->
     return record
 
 
-def build_context(records: list[Record], max_context_lines: int) -> list[Record]:
+def build_context(records: list[Record], max_context_lines: int, context_separator: str) -> list[Record]:
     """
     Build left context by concatenating past lines from the text.
     """
+    sep = to_printable_ascii(context_separator)
+    if context_separator and not sep:
+        logger.warning(
+            f"Context separator {context_separator} is discarded, as it contains no printable ascii character."
+        )
     past = [r["words"] for r in records]
-    return [r | {"context": concat_lists(past[max(0, i - max_context_lines) : i])} for i, r in enumerate(records)]
+    return [
+        r | {"context": concat_lists(past[max(0, i - max_context_lines) : i]) + [sep] if sep else []} 
+        for i, r in enumerate(records)
+    ]
 
 
 def sort_by_length(records: list[Record]) -> list[Record]:
