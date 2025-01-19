@@ -19,7 +19,11 @@ Install the project dependencies
 ```
 poetry install
 ```
-Remove the environment once you are done using this project
+(Optional) Install pre-commit hooks
+```
+pre-commit install
+```
+(Optional) Remove the environment once you are done using this project
 ```
 conda remove -n bert-playground --all
 ```
