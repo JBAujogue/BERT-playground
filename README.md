@@ -7,22 +7,22 @@ It does **not** cover the use of "large" models, eg > 110M parameters
 # Setup
 This project uses `miniconda` as environment manager, `python 3.11` as core interpreter, and `poetry 1.8.3` as dependency manager.
 
-- Create a new conda environment
-    ```
-    conda env create -f environment.yaml
-    ```
-- Activate the environment
-    ```
-    conda activate bert-playground
-    ```
-- Install the project dependencies
-    ```
-    poetry install
-    ```
-- Remove the environment once you are done using this project
-    ```
-    conda remove -n bert-playground --all
-    ```
+Create a new conda environment
+```
+conda env create -f environment.yaml
+```
+Activate the environment
+```
+conda activate bert-playground
+```
+Install the project dependencies
+```
+poetry install
+```
+Remove the environment once you are done using this project
+```
+conda remove -n bert-playground --all
+```
 
 
 # Tasks
@@ -32,7 +32,7 @@ tensorboard --logdir=models
 ```
 
 
-## Masked Language Modeling
+## • Masked Language Modeling
 Train a model
 ```shell
 python -m bertools.tasks.mlm train --config-path configs/mlm/train.yaml --output-dir models/mlm/ctti-mlm-baseline
@@ -50,13 +50,30 @@ model(line)
 ```
 
 
-## Named Entity Recognition (Token-level)
+## • Named Entity Recognition (Token-level)
+Train a model
 ```shell
 python -m bertools.tasks.ner train --config-path configs/ner/train.yaml --output-dir models/ner/chia-ner-baseline
 ```
+Run inference
+```python
+from transformers import pipeline
+
+model_dir = 'models/ner/chia-ner-baseline'
+model = pipeline(
+    'ner', 
+    tokenizer = f'{model_dir}/tokenizer', 
+    model = f'{model_dir}/model',
+    aggregation_strategy = 'simple',
+)
+
+line = 'Systemic corticosteroids (oral within 7 days of first dose of 852A (topical or inhaled steroids are allowed)'
+
+model(line)
+```
 
 
-## Named Entity Recognition (Word-level + Causal)
+## • Named Entity Recognition (Word-level + Causal)
 Train and evaluate a model
 ```shell
 python -m bertools.tasks.wordner train --config-path configs/wordner/train.yaml --output-dir models/wordner/chia-ner-baseline
@@ -83,7 +100,7 @@ model(lines)
 ```
 
 
-## Reranking
+## • Reranking
 Train a model
 ```shell
 python -m bertools.tasks.rerank train --config-path configs/rerank/train.yaml --output-dir models/rerank/dummy-rerank-baseline
