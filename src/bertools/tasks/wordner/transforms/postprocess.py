@@ -42,12 +42,12 @@ def word_indices_to_spans(record: Record, id2label: dict[int, str]) -> list[Span
         return []
 
     # spot word indices where there is a change of label, marking span boundaries
-    changes = [i for i in range(1, len(indices)) if indices[i-1] != indices[i]]
+    changes = [i for i in range(1, len(indices)) if indices[i - 1] != indices[i]]
     return [
         Span(
             start=offsets[i][0],
-            end=offsets[j-1][1],
-            text=content[offsets[i][0] : offsets[j-1][1]],
+            end=offsets[j - 1][1],
+            text=content[offsets[i][0] : offsets[j - 1][1]],
             label=id2label[indices[i]],
             confidence=max(confs[i:j]),
         )
