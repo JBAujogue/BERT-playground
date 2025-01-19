@@ -63,14 +63,10 @@ def train(config_path: str | Path, output_dir: str | Path, save_model: bool = Tr
     logger.info(f"Using device {device}")
 
     # load & prepare train/eval/test datasets
-    dataset_as_records = prepare_dataset_for_training(**train_config["dataset_args"])
-    dataset = {k: Dataset.from_list(v) for k, v in dataset_as_records.items()}
-    logger.info("Loaded datasets:" + "".join(f"\n\t- '{k}' with {len(v)} lines" for k, v in dataset.items()))
-
-    # load list of labels, with the empty label appearing first
-    labels = [""] + sorted({sp["label"] for rs in dataset_as_records.values() for r in rs for sp in r["spans"]})
+    dataset, labels = prepare_dataset_for_training(**train_config["dataset_args"])
     id2label = dict(enumerate(labels))
     label2id = {label: i for i, label in id2label.items()}
+    logger.info("Loaded datasets:" + "".join(f"\n\t- '{k}' with {len(v)} lines" for k, v in dataset.items()))
     logger.info("Loaded labels:" + "".join(f"\n\t- {k}: {v}" for k, v in id2label.items()))
 
     # load tokenizer
@@ -89,7 +85,6 @@ def train(config_path: str | Path, output_dir: str | Path, save_model: bool = Tr
     training_args = TrainingArguments(
         output_dir=output_dir,
         logging_dir=logging_dir,
-        overwrite_output_dir=True,
         remove_unused_columns=False,
         **train_config["training_args"],
     )
@@ -159,11 +154,19 @@ def prepare_dataset_for_training(
     data_files: dict[str, list[str]],
     preprocess_args: dict[str, Any],
     upsampling_coefs: dict[str, int] | None = None,
-) -> dict[str, list[Record]]:
+) -> tuple[dict[str, list[Record]], list[str]]:
     """
     Load and prepare train/eval/test splits as a dict of Datasets.
     """
-    return {k: prepare_split_for_training(k, v, preprocess_args, upsampling_coefs) for k, v in data_files.items()}
+    dataset_as_records = {
+        k: prepare_split_for_training(k, v, preprocess_args, upsampling_coefs) 
+        for k, v in data_files.items()
+    }
+    dataset = {k: Dataset.from_list(v) for k, v in dataset_as_records.items()}
+
+    # load list of labels, with the empty label appearing first
+    labels = [""] + sorted({sp["label"] for rs in dataset_as_records.values() for r in rs for sp in r["spans"]})
+    return dataset, labels
 
 
 def prepare_split_for_training(
@@ -189,12 +192,10 @@ def upsample_records(records: list[Record], upsampling_coefs: dict[str, int]) ->
     upsampling_records = {
         k: [r for r in records if k in [sp["label"] for sp in r["spans"]]] * v for k, v in upsampling_coefs.items()
     }
-    logger.warning(
-        (
-            "Adding duplicates to pool of records:"
-            + "".join(f"\n\t- {k}: {len(v)} lines" for k, v in upsampling_records.items())
-        )
-    )
+    logger.warning((
+        "Adding duplicates to pool of records:"
+        + "".join(f"\n\t- {k}: {len(v)} lines" for k, v in upsampling_records.items())
+    ))
     for dupl in upsampling_records.values():
         if dupl:
             period = int(len(records) / len(dupl))
@@ -207,7 +208,7 @@ def upsample_records(records: list[Record], upsampling_coefs: dict[str, int]) ->
     return records
 
 
-def compute_metrics_for_training(p: EvalPrediction, id2label: dict[int, str], target_fpr) -> dict[str, Any]:
+def compute_metrics_for_training(p: EvalPrediction, id2label: dict[int, str], target_fpr: float) -> dict[str, Any]:
     """
     Compute our kpis.
     """
@@ -219,7 +220,7 @@ def compute_metrics_for_training(p: EvalPrediction, id2label: dict[int, str], ta
     lengths = masks.sum(dim=1)
     ids = [str(i) for i in range(len(lengths))]
     contents = ["w " * length for length in lengths]
-    offsets = [[(2 * i, 2 * i + 1) for i in range(length)] for length in lengths]
+    offsets = [[(2*i, 2*i+1) for i in range(length)] for length in lengths]
 
     # compute pred & gold logits as tensors of shape (num_msgs, max_num_tokens, num_classes)
     pred_token_logits = torch.Tensor(p.predictions)

@@ -26,6 +26,12 @@ This project uses `miniconda` as environment manager, `python 3.11` as core inte
 
 
 # Tasks
+All experiments can be inspected by lauching a tensorboard session in a separate terminal
+```shell
+tensorboard --logdir=models
+```
+
+
 ## Masked Language Modeling
 Train a model
 ```shell
@@ -46,7 +52,7 @@ model(line)
 
 ## Named Entity Recognition (Token-level)
 ```shell
-python -m bertools.tasks.ner train --config-path configs/ner.yaml --output-dir models/ner/chia-ner-baseline
+python -m bertools.tasks.ner train --config-path configs/ner/train.yaml --output-dir models/ner/chia-ner-baseline
 ```
 
 

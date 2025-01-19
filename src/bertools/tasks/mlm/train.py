@@ -13,7 +13,7 @@ from transformers import (
     set_seed,
 )
 
-from bertools.tasks.mlm.collators import DataCollatorForMLM
+from bertools.tasks.mlm.collate import DataCollatorForMLM
 from bertools.tasks.mlm.transforms import form_constant_length_blocks
 
 
