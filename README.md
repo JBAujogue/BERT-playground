@@ -33,7 +33,11 @@ tensorboard --logdir=models
 
 
 ## • Masked Language Modeling
-Train a model
+Features
+- Standard Masked Language Modeling model
+- Learning carries 3 subtasks: (1) token unmasking, (2) token denoising, (3) token autoencoding
+
+Train
 ```shell
 python -m bertools.tasks.mlm train --config-path configs/mlm/train.yaml --output-dir models/mlm/ctti-mlm-baseline
 ```
@@ -42,7 +46,11 @@ Run inference
 from transformers import pipeline
 
 model_dir = 'models/mlm/ctti-mlm-baseline'
-model = pipeline('fill-mask', tokenizer = f'{model_dir}/tokenizer', model = f'{model_dir}/model')
+model = pipeline(
+    task = 'fill-mask',
+    tokenizer = f'{model_dir}/tokenizer',
+    model = f'{model_dir}/model',
+)
 
 line = 'Systemic corticosteroids (oral or [MASK]) within 7 days of first dose of 852A (topical or inhaled steroids are allowed)'
 
@@ -50,8 +58,12 @@ model(line)
 ```
 
 
-## • Named Entity Recognition (Token-level)
-Train a model
+## • Named Entity Recognition
+Features
+- Standard Named Entity recognition model
+- Operates at the token level, by classifying tokens in BIO format
+
+Train
 ```shell
 python -m bertools.tasks.ner train --config-path configs/ner/train.yaml --output-dir models/ner/chia-ner-baseline
 ```
@@ -61,7 +73,7 @@ from transformers import pipeline
 
 model_dir = 'models/ner/chia-ner-baseline'
 model = pipeline(
-    'ner', 
+    task = 'ner', 
     tokenizer = f'{model_dir}/tokenizer', 
     model = f'{model_dir}/model',
     aggregation_strategy = 'simple',
@@ -74,9 +86,19 @@ model(line)
 
 
 ## • Named Entity Recognition (Word-level + Causal)
-Train and evaluate a model
+Features
+- Custom Named Entity recognition model
+- Operates at the word level, by classifying the first token of each word in IO format
+- Causal, by taking previous lines as context
+- Learning designed to faithfully optimize the behavior at inference
+
+
+Train
 ```shell
 python -m bertools.tasks.wordner train --config-path configs/wordner/train.yaml --output-dir models/wordner/chia-ner-baseline
+```
+Evaluate
+```shell
 python -m bertools.tasks.wordner evaluate --config-path configs/wordner/evaluate.yaml --base-model-dir models/wordner/chia-ner-baseline --output-dir eval
 ```
 Run inference
@@ -86,22 +108,16 @@ from bertools.tasks.wordner import WordLevelCausalNER
 model = WordLevelCausalNER('models/wordner/chia-ner-baseline')
 
 lines = [
-    {'id': 'NCT00236340_exc--0', 'content': 'Multiple pregnancy (more than 3 fetuses) \n'}, 
-    {'id': 'NCT00236340_exc--1', 'content': 'Maternal history of placental abruptio \n'}, 
-    {'id': 'NCT00236340_exc--2', 'content': 'Fetus with IUGR \n'}, 
-    {'id': 'NCT00236340_exc--3', 'content': 'Pregnancy complicated with pre-eclampsia \n'}, 
-    {'id': 'NCT00236340_exc--4', 'content': 'Unability to give informed consent       \n'}, 
-    {'id': 'NCT00236340_inc--0', 'content': 'Pregnant women with abdomen discumfort and ultrasound diagnosis of polyhydramnios (AFI>25cm) \n'}, 
-    {'id': 'NCT00236340_inc--1', 'content': 'Single or twin pregnancies \n'}, 
-    {'id': 'NCT00319748_exc--0', 'content': 'Had/have the following prior/concurrent therapy: \n'}, 
-    {'id': 'NCT00319748_exc--1', 'content': 'Systemic corticosteroids (oral or injectable) within 7 days of first dose of 852A (topical or inhaled steroids are allowed) \n'}
+    {'id': '0', 'content': 'Multiple pregnancy (more than 3 fetuses)'}, 
+    {'id': '1', 'content': 'Had/have the following prior/concurrent therapy:\n'}, 
+    {'id': '2', 'content': 'Systemic corticosteroids (oral or injectable) within 7 days of first dose of 852A (topical or inhaled steroids are allowed)'}
 ]
 model(lines)
 ```
 
 
 ## • Reranking
-Train a model
+Train
 ```shell
 python -m bertools.tasks.rerank train --config-path configs/rerank/train.yaml --output-dir models/rerank/dummy-rerank-baseline
 ```
