@@ -1,30 +1,30 @@
 import os
 from pathlib import Path
-import yaml  # type: ignore[import-untyped]
-from loguru import logger
 
-from datasets import Dataset, DatasetDict
 import torch
+import yaml  # type: ignore[import-untyped]
+from datasets import Dataset, DatasetDict
+from loguru import logger
 from transformers import (
-    AutoTokenizer, 
     AutoModelForTokenClassification,
+    AutoTokenizer,
     DataCollatorForTokenClassification,
-    TrainingArguments, 
     Trainer,
+    TrainingArguments,
     set_seed,
 )
 
-from bertools.tasks.ner.metrics import EvaluationMetric
-from bertools.tasks.ner.transforms import preprocess_records, concat_lists, tokenize_dataset
 from bertools.tasks.ner.load import load_annotations
+from bertools.tasks.ner.metrics import EvaluationMetric
+from bertools.tasks.ner.transforms import concat_lists, preprocess_records, tokenize_dataset
 from bertools.tasks.ner.typing import Record
 
 
 def train(config_path: str | Path, output_dir: str | Path, save_model: bool = True) -> None:
-    '''
+    """
     End-to-end training of a Named Entity Recognition Model.
     See https://github.com/huggingface/transformers/blob/main/examples/pytorch/token-classification/run_ner.py
-    '''
+    """
     logger.info(
         """
         ========================================================
@@ -57,7 +57,7 @@ def train(config_path: str | Path, output_dir: str | Path, save_model: bool = Tr
 
     # load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(**train_config["tokenizer_args"])
-    
+
     # load model
     model_args = {"id2label": id2label, "label2id": label2id} | train_config["model_args"]
     model = AutoModelForTokenClassification.from_pretrained(**model_args).to(device).train()
@@ -68,9 +68,9 @@ def train(config_path: str | Path, output_dir: str | Path, save_model: bool = Tr
 
     # tokenize and build token-level target labels
     dataset = tokenize_dataset(
-        dataset = dataset,
-        tokenizer = tokenizer,
-        label2id = label2id, 
+        dataset=dataset,
+        tokenizer=tokenizer,
+        label2id=label2id,
         **train_config["collator_args"],
     )
     # train model
@@ -80,13 +80,13 @@ def train(config_path: str | Path, output_dir: str | Path, save_model: bool = Tr
         **train_config["training_args"],
     )
     trainer = Trainer(
-        model = model,
-        tokenizer = tokenizer,
-        args = training_args,
-        data_collator = collator,
-        train_dataset = dataset['train'],
-        eval_dataset = dataset.get('eval', None),
-        compute_metrics = EvaluationMetric(id2label),
+        model=model,
+        tokenizer=tokenizer,
+        args=training_args,
+        data_collator=collator,
+        train_dataset=dataset["train"],
+        eval_dataset=dataset.get("eval", None),
+        compute_metrics=EvaluationMetric(id2label),
     )
     trainer.train()
     logger.success("Training phase complete")
@@ -126,8 +126,8 @@ def load_and_preprocess_dataset(data_files: dict[str, list[str]]) -> tuple[dict[
 
     # load list of labels and turn them to BIO format
     raw_labels = sorted({sp["label"] for rs in dataset_as_records.values() for r in rs for sp in r["spans"]})
-    bio_labels = ["O"] + [f"B-{l}" for l in raw_labels] + [f"I-{l}" for l in raw_labels]
-    
+    bio_labels = ["O"] + [f"B-{label}" for label in raw_labels] + [f"I-{label}" for label in raw_labels]
+
     return dataset, bio_labels
 
 

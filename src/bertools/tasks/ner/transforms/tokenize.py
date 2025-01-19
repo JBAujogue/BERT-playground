@@ -6,10 +6,10 @@ def tokenize_dataset(dataset: Dataset | DatasetDict, tokenizer, label2id, **kwar
     Add tokens and token labels to a dataset.
     """
     dataset = dataset.map(build_word_labels)
-    dataset = dataset.select_columns(['words', 'word_labels'])
+    dataset = dataset.select_columns(["words", "word_labels"])
     dataset = dataset.map(
-        function = lambda examples: tokenize_and_build_token_labels(examples, tokenizer, label2id, **kwargs),
-        batched = True,
+        function=lambda examples: tokenize_and_build_token_labels(examples, tokenizer, label2id, **kwargs),
+        batched=True,
     )
     return dataset
 
@@ -47,8 +47,8 @@ def build_token_labels(inputs, examples, label2id):
     """
     labels = []
     for i, word_labels in enumerate(examples["word_labels"]):
-        word_ids = inputs.word_ids(batch_index = i)
-        
+        word_ids = inputs.word_ids(batch_index=i)
+
         token_labels = []
         previous_id = None
         for current_id, current_label in zip(word_ids, word_labels):
@@ -58,10 +58,10 @@ def build_token_labels(inputs, examples, label2id):
 
             elif current_label == "O":
                 token_labels.append(label2id["O"])
-                
+
             # label the first token of each word with "B-" prefix, else with "I-" prefix
             else:
-                prefix = ("B-" if current_id != previous_id else "I-")
+                prefix = "B-" if current_id != previous_id else "I-"
                 token_labels.append(label2id[f"{prefix}{current_label}"])
             previous_id = current_id
         labels.append(token_labels)

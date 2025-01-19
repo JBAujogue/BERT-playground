@@ -13,24 +13,6 @@ class Span(TypedDict):
     confidence: float
 
 
-class Input(TypedDict):
-    """
-    Base class for an input of word-level NER model.
-    """
-
-    id: str
-    content: str
-
-
-class Output(TypedDict):
-    """
-    Base class for an output of word-level NER model.
-    """
-
-    id: str
-    spans: list[Span]
-
-
 class Record(TypedDict, total=False):
     """
     Base class for an output of word-level NER model.

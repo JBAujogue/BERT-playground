@@ -1,27 +1,28 @@
 import re
 from itertools import chain
 from typing import Any, Iterable
+
 from unidecode import unidecode
 
-from bertools.tasks.ner.typing import Input, Record
+from bertools.tasks.ner.typing import Record
 
 # build a table mapping all non-printable ascii characters to None
 # using 128 for ascii-only chars, for all unicode chars use "sys.maxunicode + 1" instead
 NOPRINT_TRANS_TABLE = {i: None for i in range(128) if not chr(i).isprintable()}
 
 
-def preprocess_records(inputs: Iterable[Input | Record]) -> list[Record]:
+def preprocess_records(records: Iterable[Record]) -> list[Record]:
     """
     Apply preprocessing steps on each line:
     - split content into printable ascii words
     - sort by decreasing number of words (context included).
     """
-    records = split_into_printable_ascii_words(inputs)
+    records = split_into_printable_ascii_words(records)
     records = sort_by_length(records)
     return records
 
 
-def split_into_printable_ascii_words(records: Iterable[Input | Record]) -> list[Record]:
+def split_into_printable_ascii_words(records: Iterable[Record]) -> list[Record]:
     """
     Split a string into a list of words.
     Each word is converted to printable ascii, and is dropped if conversion results in a
@@ -31,7 +32,7 @@ def split_into_printable_ascii_words(records: Iterable[Input | Record]) -> list[
     return [split_content(r, pattern) for r in records]
 
 
-def split_content(record: Input | Record, pattern: re.Pattern[str]) -> Record:
+def split_content(record: Record, pattern: re.Pattern[str]) -> Record:
     """
     Split string according to the supplied regex pattern, convert each split into
     printable ascii or remove it when conversion returns an empty string.
