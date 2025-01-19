@@ -1,5 +1,4 @@
 global_seed: 42
-target_fpr: 2.0
 
 dataset_args:
     data_files:
@@ -9,21 +8,15 @@ dataset_args:
           - data/chia/ner-baseline/eval.parquet
         test:
           - data/chia/ner-baseline/test.parquet
-    preprocess_args:
-        max_context_lines: 3
-        prefix: ''
-        suffix: ''
-        context_separator: '[SEP]'
-    # upsampling_coefs:
 
 tokenizer_args:
-    pretrained_model_name_or_path: microsoft/deberta-v3-base
+    pretrained_model_name_or_path: michiyasunaga/BioLinkBERT-base
 
 model_args:
-    pretrained_model_name_or_path: microsoft/deberta-v3-base
+    pretrained_model_name_or_path: michiyasunaga/BioLinkBERT-base
 
 collator_args:
-    max_tokens: 256
+    max_length: 256
 
 training_args:
     learning_rate: 5.e-5
@@ -41,9 +34,9 @@ training_args:
     fp16: False
     tf32: False
     torch_compile: False
-    eval_steps: 0.2
     eval_strategy: 'steps'
     save_strategy: 'no'
     logging_steps: 0.05
     seed: 42
     data_seed: 23
+    remove_unused_columns: true
