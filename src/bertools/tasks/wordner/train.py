@@ -159,8 +159,7 @@ def prepare_dataset_for_training(
     Load and prepare train/eval/test splits as a dict of Datasets.
     """
     dataset_as_records = {
-        k: prepare_split_for_training(k, v, preprocess_args, upsampling_coefs) 
-        for k, v in data_files.items()
+        k: prepare_split_for_training(k, v, preprocess_args, upsampling_coefs) for k, v in data_files.items()
     }
     dataset = {k: Dataset.from_list(v) for k, v in dataset_as_records.items()}
 
@@ -192,10 +191,12 @@ def upsample_records(records: list[Record], upsampling_coefs: dict[str, int]) ->
     upsampling_records = {
         k: [r for r in records if k in [sp["label"] for sp in r["spans"]]] * v for k, v in upsampling_coefs.items()
     }
-    logger.warning((
-        "Adding duplicates to pool of records:"
-        + "".join(f"\n\t- {k}: {len(v)} lines" for k, v in upsampling_records.items())
-    ))
+    logger.warning(
+        (
+            "Adding duplicates to pool of records:"
+            + "".join(f"\n\t- {k}: {len(v)} lines" for k, v in upsampling_records.items())
+        )
+    )
     for dupl in upsampling_records.values():
         if dupl:
             period = int(len(records) / len(dupl))
@@ -220,7 +221,7 @@ def compute_metrics_for_training(p: EvalPrediction, id2label: dict[int, str], ta
     lengths = masks.sum(dim=1)
     ids = [str(i) for i in range(len(lengths))]
     contents = ["w " * length for length in lengths]
-    offsets = [[(2*i, 2*i+1) for i in range(length)] for length in lengths]
+    offsets = [[(2 * i, 2 * i + 1) for i in range(length)] for length in lengths]
 
     # compute pred & gold logits as tensors of shape (num_msgs, max_num_tokens, num_classes)
     pred_token_logits = torch.Tensor(p.predictions)

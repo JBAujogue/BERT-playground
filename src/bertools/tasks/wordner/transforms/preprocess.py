@@ -102,7 +102,7 @@ def build_context(records: list[Record], max_context_lines: int, context_separat
         )
     past = [r["words"] for r in records]
     return [
-        r | {"context": concat_lists(past[max(0, i - max_context_lines) : i]) + [sep] if sep else []} 
+        r | {"context": concat_lists(past[max(0, i - max_context_lines) : i]) + [sep] if sep else []}
         for i, r in enumerate(records)
     ]
 

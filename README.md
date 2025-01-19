@@ -19,7 +19,11 @@ Install the project dependencies
 ```
 poetry install
 ```
-Remove the environment once you are done using this project
+(Optional) Install pre-commit hooks
+```
+pre-commit install
+```
+(Optional) Remove the environment once you are done using this project
 ```
 conda remove -n bert-playground --all
 ```
@@ -79,9 +83,13 @@ model = pipeline(
     aggregation_strategy = 'simple',
 )
 
-line = 'Systemic corticosteroids (oral within 7 days of first dose of 852A (topical or inhaled steroids are allowed)'
+lines = [
+    'Multiple pregnancy (more than 3 fetuses)',
+    'Had/have the following prior/concurrent therapy:\n',
+    'Systemic corticosteroids (oral or injectable) within 7 days of first dose of 852A (topical or inhaled steroids are allowed)',
+]
 
-model(line)
+model(lines)
 ```
 
 

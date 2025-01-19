@@ -43,7 +43,8 @@ class Collator:
         """
         num_word_in_encoded = masks.sum(dim=1)
         return [
-            r | {"words": r["words"][-num_word_in_encoded[i]:], "offsets": r["offsets"][-num_word_in_encoded[i]:]} for i, r in enumerate(records)
+            r | {"words": r["words"][-num_word_in_encoded[i] :], "offsets": r["offsets"][-num_word_in_encoded[i] :]}
+            for i, r in enumerate(records)
         ]
 
     @staticmethod
